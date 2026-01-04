@@ -43,6 +43,7 @@ export const upsert = mutation({
     const _id = await ctx.db.insert("users", {
       email: args.email,
       ...updateData,
+      points: 0,
     });
     return (await ctx.db.get(_id))!;
   },
@@ -154,5 +155,31 @@ export const verifyUser = query({
     }
 
     return { ...user, imageUrl };
+  },
+});
+
+export const updateProfile = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.string(),
+    email: v.string(),
+    image: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, ...updates } = args;
+
+    // Check if user exists
+    const existingUser = await ctx.db.get(userId);
+    if (!existingUser) {
+      throw new Error("User not found. Please log in again.");
+    }
+
+    await ctx.db.patch(userId, {
+      name: updates.name,
+      email: updates.email,
+      ...(updates.image !== undefined && { image: updates.image }),
+    });
+
+    return await ctx.db.get(userId);
   },
 });

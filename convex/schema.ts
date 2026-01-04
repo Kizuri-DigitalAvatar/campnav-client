@@ -21,6 +21,7 @@ export default defineSchema({
     durationEnd: v.optional(v.number()), // For visitors (timestamp)
     isOnSite: v.optional(v.boolean()), // For staff
     campStaffId: v.optional(v.string()), // For staff
+    points: v.optional(v.number()),
   })
     .index("by_role", ["role"])
     .index("by_email", ["email"]),
@@ -33,7 +34,8 @@ export default defineSchema({
     total: v.number(),
     status: v.string(), // e.g. "pending", "in_progress", "completed"
     createdAt: v.number(), // timestamp (Date.now())
-  }).index("by_status", ["status"]),
+  }).index("by_status", ["status"])
+    .index("by_userId", ["userId"]),
   announcements: defineTable({
     title: v.string(),
     content: v.string(),
@@ -88,4 +90,13 @@ export default defineSchema({
     image: v.optional(v.string()), // storageId
   }).index("by_userId", ["userId"])
     .index("by_status", ["status"]),
+  activities: defineTable({
+    title: v.string(),
+    description: v.string(),
+    date: v.number(), // timestamp
+    time: v.string(),
+    location: v.string(),
+    category: v.optional(v.string()), // e.g. "Social", "Workshop", "Outdoor"
+    capacity: v.optional(v.number()),
+  }).index("by_date", ["date"]),
 });

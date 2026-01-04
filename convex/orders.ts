@@ -72,3 +72,13 @@ export const deleteOrder = mutation({
     await ctx.db.delete(args.id);
   },
 });
+export const listForUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .collect();
+  },
+});

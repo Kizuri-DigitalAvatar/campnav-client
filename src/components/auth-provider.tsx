@@ -17,6 +17,7 @@ export type AuthUser = {
   name: string
   email: string
   image?: string
+  points?: number
 }
 
 type AuthContextValue = {
@@ -24,6 +25,7 @@ type AuthContextValue = {
   loading: boolean
   login: (input: { email: string; password?: string }) => Promise<void>
   logout: () => void
+  setUser: (user: AuthUser) => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -68,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: dbUser.name,
           email: dbUser.email,
           image: dbUser.imageUrl || undefined,
+          points: dbUser.points || 0,
         }
         setUser(mapped)
         if (typeof window !== "undefined") {
@@ -87,8 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const updateUser = useCallback((updatedUser: AuthUser) => {
+    setUser(updatedUser)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser))
+    }
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setUser: updateUser }}>
       {children}
     </AuthContext.Provider>
   )

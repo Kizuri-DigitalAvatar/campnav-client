@@ -11,6 +11,13 @@ export const create = mutation({
         image: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (user) {
+            await ctx.db.patch(args.userId, {
+                points: (user.points ?? 0) + 50
+            });
+        }
+
         return await ctx.db.insert("requests", {
             ...args,
             status: "pending",
