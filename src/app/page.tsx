@@ -52,56 +52,57 @@ export default function Home() {
   return (
     <div className="space-y-6 pb-4">
       {/* ... previous content ... */}
-      <WeatherWidget />
+      {/* Quick Access removed as per request */}
 
-      <QuickAccessGrid />
 
       {/* Announcements */}
-      <section className="mt-4 space-y-3">
+      <section className="mt-4 space-y-4">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-base font-semibold">Announcements</h2>
-          <Link href="/updates" className="text-xs font-medium text-primary">More..</Link>
+          <h2 className="text-lg font-bold tracking-tight">Announcements</h2>
+          <Link href="/updates" className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors">View All</Link>
         </div>
-        {latestAnnouncement ? (
-          <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary/90 p-px shadow-lg shadow-primary/20">
-            <div className="relative z-10 block rounded-[23px] bg-gradient-to-br from-white/10 to-transparent p-5 backdrop-blur-sm">
-              <div className="flex items-start justify-between mb-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${latestAnnouncement.priority === 'High' ? 'bg-red-400' : 'bg-emerald-400'
-                      }`} />
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
-                      {latestAnnouncement.priority} • NOTICE
-                    </p>
+
+        <div className="space-y-4">
+          {announcements.length > 0 ? (
+            announcements.slice(0, 3).map((announcement) => (
+              <div key={announcement._id} className="group relative overflow-hidden rounded-3xl bg-card border shadow-sm transition-all hover:shadow-md">
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="space-y-1.5 var(--font-sans)">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${announcement.priority === 'High' ? 'bg-red-500 shadow-red-500/50 shadow-[0_0_8px]' :
+                            announcement.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                          }`} />
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {announcement.priority} PRIORITY
+                        </p>
+                      </div>
+                      <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors pr-8">
+                        {announcement.title}
+                      </h3>
+                    </div>
+                    <div className="shrink-0 p-2 bg-muted/50 rounded-full">
+                      <Megaphone size={16} className="text-foreground/70" />
+                    </div>
                   </div>
-                  <h3 className="text-lg font-bold leading-tight text-white group-hover:text-white/90 transition-colors">
-                    {latestAnnouncement.title}
-                  </h3>
-                </div>
-                <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md border border-white/20">
-                  <Megaphone size={18} className="text-white" />
-                </div>
-              </div>
 
-              <div className="flex items-center justify-between mt-auto">
-                <p className="text-[11px] font-medium text-white/50">
-                  {new Date(latestAnnouncement.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                </p>
-                <Link href="/updates" className="text-[10px] font-bold py-1 px-3 bg-white text-primary rounded-full hover:bg-white/90 transition-all">
-                  View More
-                </Link>
+                  <div className="flex items-center justify-between mt-2 pt-3 border-t border-border/50">
+                    <p className="text-[11px] font-medium text-muted-foreground">
+                      {new Date(announcement.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </p>
+                    <Link href={`/updates?id=${announcement._id}`} className="text-[11px] font-semibold text-primary flex items-center gap-1 hover:underline">
+                      Read details
+                    </Link>
+                  </div>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="p-8 text-center text-muted-foreground italic text-sm border rounded-3xl bg-muted/20 border-dashed">
+              No active announcements at this time.
             </div>
-
-            {/* Decorative elements */}
-            <div className="pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-            <div className="pointer-events-none absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-primary-foreground/5 blur-3xl" />
-          </div>
-        ) : (
-          <div className="p-8 text-center text-muted-foreground italic text-xs border rounded-3xl bg-card/50 border-dashed">
-            No active announcements.
-          </div>
-        )}
+          )}
+        </div>
       </section>
 
       {/* This week schedule */}
