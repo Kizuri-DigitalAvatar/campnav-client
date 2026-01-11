@@ -17,8 +17,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     return (
         <AuthProvider>
-            <AuthGuard>{children}</AuthGuard>
             <NavigationWrapper />
+            <AuthGuard>{children}</AuthGuard>
         </AuthProvider>
     )
 }
