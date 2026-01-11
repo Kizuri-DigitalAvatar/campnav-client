@@ -23,17 +23,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     )
 }
 
-import { BurgerMenu } from "@/components/burger-menu"
 import { Header } from "@/components/header"
 import { useAuth } from "@/components/auth-provider"
 
 function NavigationWrapper() {
     const { user } = useAuth()
     if (!user) return null
-    return (
-        <>
-            <Header />
-            <BurgerMenu />
-        </>
-    )
+    return <Header />
 }
