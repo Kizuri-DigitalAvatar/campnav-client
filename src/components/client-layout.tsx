@@ -18,16 +18,16 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return (
         <AuthProvider>
             <AuthGuard>{children}</AuthGuard>
-            <BottomNavWrapper />
+            <NavigationWrapper />
         </AuthProvider>
     )
 }
 
-import { BottomNav } from "@/components/bottom-nav"
+import { BurgerMenu } from "@/components/burger-menu"
 import { useAuth } from "@/components/auth-provider"
 
-function BottomNavWrapper() {
+function NavigationWrapper() {
     const { user } = useAuth()
     if (!user) return null
-    return <BottomNav />
+    return <BurgerMenu />
 }
