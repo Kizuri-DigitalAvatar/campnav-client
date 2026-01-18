@@ -17,6 +17,7 @@ import type * as products from "../products.js";
 import type * as reports from "../reports.js";
 import type * as requests from "../requests.js";
 import type * as rooms from "../rooms.js";
+import type * as search from "../search.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
 
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   reports: typeof reports;
   requests: typeof requests;
   rooms: typeof rooms;
+  search: typeof search;
   test: typeof test;
   users: typeof users;
 }>;
