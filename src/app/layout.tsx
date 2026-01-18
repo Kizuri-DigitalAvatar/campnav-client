@@ -64,7 +64,7 @@ export default function RootLayout({
 
               <div className="flex-1 flex flex-col">
                 <main className="flex-1 flex justify-center overflow-y-auto">
-                  <div className="w-full max-w-[400px] md:max-w-7xl px-4 pt-4 pb-20 md:pb-8">
+                  <div className="w-full max-w-[400px] md:max-w-7xl px-4 py-4 md:pb-8">
                     {/* AuthProvider + AuthGuard run on the client to gate access */}
                     <ClientLayout>
                       {children}

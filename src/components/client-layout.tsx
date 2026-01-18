@@ -17,17 +17,17 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     return (
         <AuthProvider>
+            <NavigationWrapper />
             <AuthGuard>{children}</AuthGuard>
-            <BottomNavWrapper />
         </AuthProvider>
     )
 }
 
-import { BottomNav } from "@/components/bottom-nav"
+import { Header } from "@/components/header"
 import { useAuth } from "@/components/auth-provider"
 
-function BottomNavWrapper() {
+function NavigationWrapper() {
     const { user } = useAuth()
     if (!user) return null
-    return <BottomNav />
+    return <Header />
 }
