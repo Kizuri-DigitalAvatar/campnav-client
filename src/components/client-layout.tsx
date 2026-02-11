@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { AuthProvider } from "@/components/auth-provider"
 import { AuthGuard } from "@/components/auth-guard"
+import { NotificationListener } from "@/components/notification-listener"
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const [mounted, setMounted] = useState(false)
@@ -16,10 +16,11 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <AuthProvider>
+        <>
+            <NotificationListener />
             <NavigationWrapper />
             <AuthGuard>{children}</AuthGuard>
-        </AuthProvider>
+        </>
     )
 }
 

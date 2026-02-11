@@ -18,6 +18,7 @@ export type AuthUser = {
   email: string
   image?: string
   points?: number
+  role?: string
 }
 
 type AuthContextValue = {
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: dbUser.email,
           image: dbUser.imageUrl || undefined,
           points: dbUser.points || 0,
+          role: dbUser.role,
         }
         setUser(mapped)
         if (typeof window !== "undefined") {

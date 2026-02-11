@@ -7,6 +7,9 @@ import { WeatherWidget } from "@/components/home/weather-widget"
 import { QuickAccessGrid } from "@/components/home/quick-access-grid"
 import { Clock, MapPin, Calendar, Megaphone } from "lucide-react"
 import Link from "next/link"
+import { isWorker } from "@/components/role-guard"
+import { WorkerHome } from "@/components/home/worker-home"
+import AssignmentsPage from "./assignments/page"
 
 const WEEK_EVENTS = [
   {
@@ -29,11 +32,44 @@ const WEEK_EVENTS = [
   },
 ]
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 export default function Home() {
-  const { user } = useAuth()
-  const announcements = useQuery(api.announcements.list, { priority: "all" }) ?? []
-  const activities = useQuery(api.activities.list) ?? []
-  const latestAnnouncement = announcements[0]
+  const { user, loading } = useAuth()
+  const announcements = useQuery(api.announcements.list, { priority: "all" })
+  const activities = useQuery(api.activities.list)
+
+  if (loading || announcements === undefined || activities === undefined) {
+    return (
+      <div className="space-y-6 pb-4">
+        <header className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-12 w-12 rounded-full" />
+        </header>
+
+        <Skeleton className="h-24 w-full rounded-2xl" />
+
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+
+        <div className="space-y-4">
+          <Skeleton className="h-6 w-32 px-1" />
+          {[1, 2].map((i) => (
+            <Skeleton key={i} className="h-32 rounded-3xl" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const announcementsList = announcements || []
+  const activitiesList = activities || []
+  const latestAnnouncement = announcementsList[0]
 
   const formatDay = (timestamp: number) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -47,6 +83,11 @@ export default function Home() {
     if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow'
 
     return days[date.getDay()]
+  }
+
+  // If user is a worker, show the worker home dashboard
+  if (user && isWorker(user.role)) {
+    return <WorkerHome user={user} />
   }
 
   return (
@@ -71,7 +112,7 @@ export default function Home() {
                     <div className="space-y-1.5 var(--font-sans)">
                       <div className="flex items-center gap-2">
                         <span className={`h-2 w-2 rounded-full ${announcement.priority === 'High' ? 'bg-red-500 shadow-red-500/50 shadow-[0_0_8px]' :
-                            announcement.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                          announcement.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
                           }`} />
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                           {announcement.priority} PRIORITY
