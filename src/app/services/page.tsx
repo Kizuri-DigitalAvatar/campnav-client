@@ -1,5 +1,8 @@
 import Link from "next/link"
 import { BedDouble, Brush, Shirt, ShoppingBag, Truck, Wrench, ClipboardList, ArrowRight } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
+import { isWorker } from "@/components/role-guard"
+import { redirect } from "next/navigation"
 
 import { Card } from "@/components/ui/card"
 
@@ -36,7 +39,33 @@ const SERVICES = [
   },
 ]
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 export default function ServicesPage() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="space-y-6 pb-4">
+        <header className="space-y-1">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-32" />
+        </header>
+
+        <Skeleton className="h-20 w-full rounded-2xl" />
+
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-32 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (user && isWorker(user.role)) {
+    redirect("/assignments")
+  }
   return (
     <div className="space-y-6 pb-4">
       <header className="space-y-1">

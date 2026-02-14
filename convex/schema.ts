@@ -16,11 +16,19 @@ export default defineSchema({
     email: v.string(),
     image: v.optional(v.string()),
     password: v.optional(v.string()),
-    role: v.optional(v.string()), // admin, staff, visitor
+    role: v.optional(v.string()), // admin, camper, camp-staff, visitor
+    assignedDuties: v.optional(v.array(v.string())), // For camp-staff: ["housekeeping", "maintenance", "laundry"]
+    currentTaskId: v.optional(v.id("housekeeping")), // For tracking if camp-staff is vacant
+    phoneNumber: v.optional(v.string()), // For SMS notifications
+    notificationPreferences: v.optional(v.object({
+      push: v.boolean(),
+      email: v.boolean(),
+      sms: v.boolean(),
+    })),
     durationStart: v.optional(v.number()), // For visitors (timestamp)
     durationEnd: v.optional(v.number()), // For visitors (timestamp)
-    isOnSite: v.optional(v.boolean()), // For staff
-    campStaffId: v.optional(v.string()), // For staff
+    isOnSite: v.optional(v.boolean()), // For camp-staff
+    campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
   })
     .index("by_role", ["role"])
@@ -45,12 +53,42 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_priority", ["priority"]),
   housekeeping: defineTable({
-    housekeeperId: v.id("users"),
+    housekeeperId: v.optional(v.id("users")), // camp-staff assigned
+    requestId: v.optional(v.id("requests")),
     roomNumber: v.string(),
-    serviceType: v.string(), // e.g. "Cleaning", "Maintenance", "Laundry"
-    status: v.string(), // "pending", "in_progress", "completed"
+    serviceType: v.string(), // e.g. "housekeeping", "maintenance", "laundry"
+    status: v.string(), // "pending", "confirmed", "in_progress", "completed", "rated"
     assignedAt: v.number(),
-  }),
+    staffConfirmedAt: v.optional(v.number()), // When camp-staff confirms acceptance
+    acknowledgedAt: v.optional(v.number()), // When worker responds
+    startedAt: v.optional(v.number()), // When work begins
+    completedAt: v.optional(v.number()), // When work finishes
+    camperConfirmedAt: v.optional(v.number()), // When camper confirms completion
+    rating: v.optional(v.number()), // 1-5 stars
+    feedback: v.optional(v.string()), // Camper's written feedback
+    updates: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      text: v.optional(v.string()),
+      images: v.optional(v.array(v.string())), // Storage IDs
+      audio: v.optional(v.string()), // Storage ID
+    }))),
+    lastReminderSent: v.optional(v.number()), // For escalation tracking
+    reminderCount: v.optional(v.number()), // Number of reminders sent
+  }).index("by_housekeeperId", ["housekeeperId"])
+    .index("by_status", ["status"]),
+  notifications: defineTable({
+    userId: v.id("users"),
+    assignmentId: v.optional(v.id("housekeeping")),
+    requestId: v.optional(v.id("requests")),
+    type: v.string(), // "assignment", "reminder", "admin_alert"
+    channel: v.string(), // "push", "email", "sms"
+    status: v.string(), // "pending", "sent", "delivered", "failed"
+    message: v.string(),
+    sentAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"])
+    .index("by_assignmentId", ["assignmentId"])
+    .index("by_status", ["status"]),
   reports: defineTable({
     userId: v.id("users"),
     type: v.string(), // "bug", "feedback", "incident"

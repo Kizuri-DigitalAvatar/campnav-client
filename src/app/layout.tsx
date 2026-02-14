@@ -5,7 +5,9 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { DesktopNav } from "@/components/desktop-nav";
 
 import ConvexClientProvider from "@/components/convex-client-provider";
+import { AuthProvider } from "@/components/auth-provider";
 import { ClientLayout } from "@/components/client-layout";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,22 +60,25 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ConvexClientProvider>
-            <div className="relative flex min-h-screen">
-              {/* Responsive Navigation */}
-              <DesktopNav />
+            <AuthProvider>
+              <div className="relative flex min-h-screen">
+                {/* Responsive Navigation */}
+                <DesktopNav />
 
-              <div className="flex-1 flex flex-col">
-                <main className="flex-1 flex justify-center overflow-y-auto">
-                  <div className="w-full max-w-[400px] md:max-w-7xl px-4 py-4 md:pb-8">
-                    {/* AuthProvider + AuthGuard run on the client to gate access */}
-                    <ClientLayout>
-                      {children}
-                    </ClientLayout>
-                  </div>
-                </main>
+                <div className="flex-1 flex flex-col">
+                  <main className="flex-1 flex justify-center overflow-y-auto">
+                    <div className="w-full max-w-[400px] md:max-w-7xl px-4 py-4 md:pb-8">
+                      {/* AuthGuard run on the client to gate access */}
+                      <ClientLayout>
+                        {children}
+                      </ClientLayout>
+                    </div>
+                  </main>
+                </div>
               </div>
-            </div>
+            </AuthProvider>
           </ConvexClientProvider>
+          <Toaster position="top-center" richColors />
         </ThemeProvider>
       </body>
     </html>

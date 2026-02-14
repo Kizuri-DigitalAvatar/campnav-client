@@ -4,18 +4,90 @@ import { useAuth } from "@/components/auth-provider"
 import { useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Card } from "@/components/ui/card"
-import { ShoppingBag, Clock, ChevronRight } from "lucide-react"
+import { ShoppingBag, Clock, ChevronRight, ClipboardList, CheckCircle2, XCircle } from "lucide-react"
+import { isWorker } from "@/components/role-guard"
+import { AssignmentCard } from "@/components/assignment-card"
+
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function HistoryPage() {
-    const { user } = useAuth()
-    const orders = useQuery(api.orders.listForUser, user ? { userId: user._id } : "skip")
+    const { user, loading } = useAuth()
+    const orders = useQuery(api.orders.listForUser, user && !isWorker(user.role) ? { userId: user._id } : "skip")
+    const assignments = useQuery(api.housekeeping.getWorkerAssignments, user && isWorker(user.role) ? { workerId: user._id } : "skip")
+
+    const isLoading = loading || (user && (isWorker(user.role) ? assignments === undefined : orders === undefined))
+
+    if (isLoading) {
+        return (
+            <div className="space-y-6 pb-20">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-64" />
+                    </div>
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
+                <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                        <Skeleton key={i} className="h-32 rounded-2xl" />
+                    ))}
+                </div>
+            </div>
+        )
+    }
 
     if (!user) return null
 
+    if (isWorker(user.role)) {
+        const completedAssignments = (assignments || []).filter(a => a.status === "completed" || a.status === "rated")
+
+        return (
+            <div className="space-y-6 pb-20">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold">Work History</h1>
+                        <p className="text-xs text-muted-foreground mt-1 tracking-tight">Your completed tasks and feedback</p>
+                    </div>
+                    <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">
+                        {completedAssignments.length} Tasks
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    {assignments === undefined ? (
+                        <div className="animate-pulse space-y-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="h-40 bg-muted rounded-3xl" />
+                            ))}
+                        </div>
+                    ) : completedAssignments.length === 0 ? (
+                        <div className="text-center py-20 bg-muted/30 rounded-3xl border-2 border-dashed border-border/50">
+                            <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
+                            <p className="text-sm font-semibold text-muted-foreground">No completed tasks yet</p>
+                            <p className="text-xs text-muted-foreground/60 mt-1">Assignments you finish will appear here</p>
+                        </div>
+                    ) : (
+                        completedAssignments.map((assignment: any) => (
+                            <AssignmentCard
+                                key={assignment._id}
+                                assignment={assignment}
+                                // View only mode for history
+                                readOnly
+                            />
+                        ))
+                    )}
+                </div>
+            </div>
+        )
+    }
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-20">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Order History</h1>
+                <div>
+                    <h1 className="text-2xl font-bold">Order History</h1>
+                    <p className="text-xs text-muted-foreground mt-1 tracking-tight">Track your previous purchases and requests</p>
+                </div>
                 <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">
                     {orders?.length || 0} Orders
                 </div>

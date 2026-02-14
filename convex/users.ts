@@ -10,6 +10,7 @@ export const upsert = mutation({
     image: v.optional(v.string()),
     password: v.optional(v.string()),
     role: v.optional(v.string()),
+    assignedDuties: v.optional(v.array(v.string())),
     durationStart: v.optional(v.number()),
     durationEnd: v.optional(v.number()),
     isOnSite: v.optional(v.boolean()),
@@ -25,6 +26,7 @@ export const upsert = mutation({
       name: args.name,
       image: args.image,
       role: args.role,
+      assignedDuties: args.assignedDuties,
       durationStart: args.durationStart,
       durationEnd: args.durationEnd,
       isOnSite: args.isOnSite,
@@ -106,11 +108,11 @@ export const getStats = query({
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
 
-    const roles = ["admin", "staff", "housekeeper", "visitor"] as const;
+    const roles = ["admin", "camper", "camp-staff", "visitor"] as const;
 
     const byRole = roles.map((role) => {
       const count = users.filter((u) => u.role === role).length;
-      const name = role.charAt(0).toUpperCase() + role.slice(1);
+      const name = role.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
       return { name, value: count };
     });
 

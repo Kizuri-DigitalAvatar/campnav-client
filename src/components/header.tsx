@@ -3,11 +3,12 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Search, User, Menu, X, Home, Grid2X2, Bell, ChevronDown, Shirt, Utensils, ShoppingBag, Wrench, Brush, Truck } from "lucide-react"
+import { Search, User, Menu, X, Home, Grid2X2, Bell, ChevronDown, Shirt, Utensils, ShoppingBag, Wrench, Brush, Truck, ClipboardList } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth-provider"
+import { isWorker } from "@/components/role-guard"
 import { cn } from "@/lib/utils"
 
 export function Header() {
@@ -29,17 +30,29 @@ export function Header() {
         { href: "/delivery", label: "Delivery", icon: Truck },
     ]
 
-    const navItems = [
-        { href: "/", label: "Home", icon: Home },
-        {
-            href: "/services",
-            label: "Services",
-            icon: Grid2X2,
-            subItems: serviceItems
-        },
-        { href: "/updates", label: "Announcements", icon: Bell },
-        { href: "/profile", label: "Profile", icon: User },
-    ]
+    // Check if current user is a worker
+    const userIsWorker = user ? isWorker(user.role) : false
+
+    // Navigation items - different for workers vs staff/visitors
+    const navItems = userIsWorker
+        ? [
+            { href: "/", label: "Home", icon: Home },
+            { href: "/assignments", label: "Assignments", icon: ClipboardList },
+            { href: "/shop", label: "Shop", icon: ShoppingBag },
+            { href: "/updates", label: "Announcements", icon: Bell },
+            { href: "/profile", label: "Profile", icon: User },
+        ]
+        : [
+            { href: "/", label: "Home", icon: Home },
+            {
+                href: "/services",
+                label: "Services",
+                icon: Grid2X2,
+                subItems: serviceItems
+            },
+            { href: "/updates", label: "Announcements", icon: Bell },
+            { href: "/profile", label: "Profile", icon: User },
+        ]
 
     const toggleSubmenu = (label: string) => {
         setOpenSubmenu(openSubmenu === label ? null : label)

@@ -2,19 +2,29 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, Grid2X2, Home, User, LayoutDashboard } from "lucide-react"
+import { Bell, Grid2X2, Home, User, LayoutDashboard, ClipboardList, History } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "@/components/mode-toggle"
-
-const NAV_ITEMS = [
-    { name: 'Home', href: '/', icon: Home },
-    { name: 'Services', href: '/services', icon: Grid2X2 },
-    { name: 'Updates', href: '/updates', icon: Bell },
-    { name: 'Profile', href: '/profile', icon: User },
-]
+import { useAuth } from "@/components/auth-provider"
+import { isWorker } from "@/components/role-guard"
 
 export function DesktopNav() {
     const pathname = usePathname()
+    const { user, loading } = useAuth()
+
+    const navItems = user && isWorker(user.role)
+        ? [
+            { name: 'Home', href: '/', icon: Home },
+            { name: 'Tasks', href: '/assignments', icon: ClipboardList },
+            { name: 'History', href: '/history', icon: History },
+            { name: 'Profile', href: '/profile', icon: User },
+        ]
+        : [
+            { name: 'Home', href: '/', icon: Home },
+            { name: 'Services', href: '/services', icon: Grid2X2 },
+            { name: 'Updates', href: '/updates', icon: Bell },
+            { name: 'Profile', href: '/profile', icon: User },
+        ]
 
     return (
         <aside className="hidden md:flex flex-col w-64 border-r bg-card/50 backdrop-blur-xl h-screen sticky top-0">
@@ -26,24 +36,35 @@ export function DesktopNav() {
             </div>
 
             <nav className="flex-1 px-4 space-y-1">
-                {NAV_ITEMS.map((item) => (
-                    <Link
-                        key={item.name}
-                        href={item.href}
-                        className={cn(
-                            "flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group",
-                            pathname === item.href
-                                ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                                : "text-muted-foreground hover:bg-muted"
-                        )}
-                    >
-                        <item.icon size={18} className={cn(
-                            "transition-transform group-hover:scale-110",
-                            pathname === item.href ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
-                        )} />
-                        <span>{item.name}</span>
-                    </Link>
-                ))}
+                {loading ? (
+                    <>
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="flex items-center space-x-3 px-4 py-3">
+                                <div className="w-5 h-5 rounded bg-muted animate-pulse" />
+                                <div className="w-24 h-4 rounded bg-muted animate-pulse" />
+                            </div>
+                        ))}
+                    </>
+                ) : (
+                    navItems.map((item: any) => (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className={cn(
+                                "flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group",
+                                pathname === item.href
+                                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
+                                    : "text-muted-foreground hover:bg-muted"
+                            )}
+                        >
+                            <item.icon size={18} className={cn(
+                                "transition-transform group-hover:scale-110",
+                                pathname === item.href ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
+                            )} />
+                            <span>{item.name}</span>
+                        </Link>
+                    ))
+                )}
             </nav>
 
             <div className="p-4 mt-auto space-y-4">

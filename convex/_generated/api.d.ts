@@ -10,8 +10,13 @@
 
 import type * as activities from "../activities.js";
 import type * as announcements from "../announcements.js";
+import type * as cron from "../cron.js";
+import type * as crons from "../crons.js";
+import type * as email from "../email.js";
+import type * as files from "../files.js";
 import type * as housekeeping from "../housekeeping.js";
 import type * as images from "../images.js";
+import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
 import type * as products from "../products.js";
 import type * as reports from "../reports.js";
@@ -30,8 +35,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
   announcements: typeof announcements;
+  cron: typeof cron;
+  crons: typeof crons;
+  email: typeof email;
+  files: typeof files;
   housekeeping: typeof housekeeping;
   images: typeof images;
+  notifications: typeof notifications;
   orders: typeof orders;
   products: typeof products;
   reports: typeof reports;
