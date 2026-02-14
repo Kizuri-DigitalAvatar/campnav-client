@@ -1,3 +1,5 @@
+"use client"
+
 import Link from "next/link"
 import { BedDouble, Brush, Shirt, ShoppingBag, Truck, Wrench, ClipboardList, ArrowRight } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"

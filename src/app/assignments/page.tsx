@@ -25,7 +25,7 @@ export default function AssignmentsPage() {
 
     const acknowledgeAssignment = useMutation(api.housekeeping.acknowledgeAssignment)
     const startAssignment = useMutation(api.housekeeping.startAssignment)
-    const completeAssignment = useMutation(api.housekeeping.completeAssignment)
+    const completeAssignment = useMutation(api.housekeeping.completeTask)
 
     const isLoading = loading || assignments === undefined
 
@@ -63,11 +63,11 @@ export default function AssignmentsPage() {
     const inProgressCount = assignmentsList.filter((a) => a.status === "in_progress").length
 
     const handleAcknowledge = async (id: Id<"housekeeping">) => {
-        await acknowledgeAssignment({ assignmentId: id })
+        await acknowledgeAssignment({ id })
     }
 
     const handleStart = async (id: Id<"housekeeping">) => {
-        await startAssignment({ assignmentId: id })
+        await startAssignment({ id })
     }
 
     const handleAddUpdate = (id: Id<"housekeeping">) => {
@@ -75,7 +75,7 @@ export default function AssignmentsPage() {
     }
 
     const handleComplete = async (id: Id<"housekeeping">) => {
-        await completeAssignment({ assignmentId: id })
+        await completeAssignment({ id })
     }
 
     const handleUpdateComplete = () => {

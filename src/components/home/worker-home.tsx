@@ -24,7 +24,7 @@ export function WorkerHome({ user }: { user: any }) {
 
     const acknowledgeAssignment = useMutation(api.housekeeping.acknowledgeAssignment)
     const startAssignment = useMutation(api.housekeeping.startAssignment)
-    const completeAssignment = useMutation(api.housekeeping.completeAssignment)
+    const completeAssignment = useMutation(api.housekeeping.completeTask)
 
     const isLoading = assignments === undefined || announcements === undefined
 

@@ -18,6 +18,11 @@ export const sendRoleNotification = mutation({
             .withIndex("by_role", (q) => q.eq("role", args.role))
             .collect();
 
+        console.log(`[sendRoleNotification] Found ${users.length} users with role: ${args.role}`);
+        if (users.length > 0) {
+            console.log(`[sendRoleNotification] User emails: ${users.map(u => u.email).join(", ")}`);
+        }
+
         const notifications = [];
 
         for (const user of users) {
@@ -38,6 +43,7 @@ export const sendRoleNotification = mutation({
             }
 
             if (prefs.email && user.email) {
+                console.log(`Queueing email notification for: ${user.email}`);
                 notifications.push(
                     ctx.db.insert("notifications", {
                         userId: user._id,
@@ -99,6 +105,7 @@ export const sendAssignmentNotification = mutation({
         }
 
         if (prefs.email && user.email) {
+            console.log(`Queueing email notification for: ${user.email}`);
             notifications.push(
                 ctx.db.insert("notifications", {
                     userId: args.userId,
@@ -167,6 +174,7 @@ export const sendReminderNotification = mutation({
         }
 
         if (prefs.email && user.email) {
+            console.log(`Queueing email notification for: ${user.email}`);
             notifications.push(
                 ctx.db.insert("notifications", {
                     userId: args.userId,
@@ -226,6 +234,7 @@ export const notifyAdminUnresponsive = mutation({
             );
 
             if (admin.email) {
+                console.log(`Queueing email notification for admin: ${admin.email}`);
                 notifications.push(
                     ctx.db.insert("notifications", {
                         userId: admin._id,
@@ -325,6 +334,8 @@ export const getPendingNotifications = query({
             .query("notifications")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
+
+        console.log(`[getPendingNotifications] Found ${pending.length} pending notifications in total`);
 
         return Promise.all(
             pending.map(async (n) => {
