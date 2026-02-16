@@ -204,11 +204,60 @@ export const sendReminderNotification = mutation({
     },
 });
 
-// Notify admin about unresponsive worker
+// Notify camper about task status update
+export const sendCamperNotification = mutation({
+    args: {
+        userId: v.id("users"),
+        assignmentId: v.optional(v.id("housekeeping")),
+        requestId: v.optional(v.id("requests")),
+        type: v.string(), // "acceptance", "completion", "escalation"
+        message: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (!user) throw new Error("User not found");
+
+        const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+        const notifications = [];
+
+        if (prefs.push) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    requestId: args.requestId,
+                    type: args.type,
+                    channel: "push",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        if (prefs.email && user.email) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    requestId: args.requestId,
+                    type: args.type,
+                    channel: "email",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        await Promise.all(notifications);
+    },
+});
+
+// Notify admin about unresponsive worker or request
 export const notifyAdminUnresponsive = mutation({
     args: {
-        assignmentId: v.id("housekeeping"),
-        workerName: v.string(),
+        assignmentId: v.optional(v.id("housekeeping")),
+        requestId: v.optional(v.id("requests")),
+        workerName: v.optional(v.string()),
         message: v.string(),
     },
     handler: async (ctx, args) => {
@@ -226,6 +275,7 @@ export const notifyAdminUnresponsive = mutation({
                 ctx.db.insert("notifications", {
                     userId: admin._id,
                     assignmentId: args.assignmentId,
+                    requestId: args.requestId,
                     type: "admin_alert",
                     channel: "push",
                     status: "pending",
@@ -234,11 +284,11 @@ export const notifyAdminUnresponsive = mutation({
             );
 
             if (admin.email) {
-                console.log(`Queueing email notification for admin: ${admin.email}`);
                 notifications.push(
                     ctx.db.insert("notifications", {
                         userId: admin._id,
                         assignmentId: args.assignmentId,
+                        requestId: args.requestId,
                         type: "admin_alert",
                         channel: "email",
                         status: "pending",

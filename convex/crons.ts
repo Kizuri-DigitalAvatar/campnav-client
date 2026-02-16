@@ -17,4 +17,11 @@ crons.interval(
     internal.email.processEmailNotifications
 );
 
+// Check for unresponded requests every 10 minutes
+crons.interval(
+    "check unresponded requests",
+    { minutes: 10 },
+    internal.cron.checkUnrespondedRequests
+);
+
 export default crons;

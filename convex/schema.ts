@@ -74,6 +74,8 @@ export default defineSchema({
     }))),
     lastReminderSent: v.optional(v.number()), // For escalation tracking
     reminderCount: v.optional(v.number()), // Number of reminders sent
+    lastEscalationSent: v.optional(v.number()), // For camper/admin escalation
+    escalationLevel: v.optional(v.number()), // 1 through 4
   }).index("by_housekeeperId", ["housekeeperId"])
     .index("by_status", ["status"]),
   notifications: defineTable({
@@ -126,6 +128,8 @@ export default defineSchema({
     status: v.string(), // "pending", "in_progress", "completed"
     createdAt: v.number(),
     image: v.optional(v.string()), // storageId
+    dailyNotificationCount: v.optional(v.number()), // Max 4 per day
+    lastDailyNotificationAt: v.optional(v.number()),
   }).index("by_userId", ["userId"])
     .index("by_status", ["status"]),
   activities: defineTable({

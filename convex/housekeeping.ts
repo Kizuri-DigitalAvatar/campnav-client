@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 export const assign = mutation({
     args: {
@@ -217,6 +218,23 @@ export const confirmTask = mutation({
         await ctx.db.patch(args.staffId, {
             currentTaskId: args.id,
         });
+
+        // Notify camper that the worker has accepted
+        if (assignment.requestId) {
+            const request = await ctx.db.get(assignment.requestId);
+            if (request) {
+                const staff = await ctx.db.get(args.staffId);
+                await ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: args.id,
+                    requestId: assignment.requestId,
+                    type: "acceptance",
+                    channel: "push",
+                    status: "pending",
+                    message: `${staff?.name || "A worker"} has accepted your request for ${assignment.roomNumber}.`,
+                });
+            }
+        }
     },
 });
 
@@ -224,10 +242,29 @@ export const confirmTask = mutation({
 export const completeTask = mutation({
     args: { id: v.id("housekeeping") },
     handler: async (ctx, args) => {
+        const assignment = await ctx.db.get(args.id);
+        if (!assignment) throw new Error("Assignment not found");
+
         await ctx.db.patch(args.id, {
             status: "completed",
             completedAt: Date.now(),
         });
+
+        // Notify camper that the task is completed
+        if (assignment.requestId) {
+            const request = await ctx.db.get(assignment.requestId);
+            if (request) {
+                await ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: args.id,
+                    requestId: assignment.requestId,
+                    type: "completion",
+                    channel: "push",
+                    status: "pending",
+                    message: `Your request for ${assignment.roomNumber} has been completed.`,
+                });
+            }
+        }
     },
 });
 
