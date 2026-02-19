@@ -190,6 +190,38 @@ export const remove = mutation({
     },
 });
 
+export const cancel = mutation({
+    args: { id: v.id("requests") },
+    handler: async (ctx, args) => {
+        const request = await ctx.db.get(args.id);
+        if (!request) throw new Error("Request not found");
+
+        // Update request status
+        await ctx.db.patch(args.id, { status: "cancelled" });
+
+        // Find associated task
+        const task = await ctx.db
+            .query("tasks")
+            .withIndex("by_requestId", (q) => q.eq("requestId", args.id))
+            .first();
+
+        if (task) {
+            // Update task status
+            await ctx.db.patch(task._id, { status: "cancelled" });
+
+            // Free up assigned staff
+            if (task.staffId) {
+                const staff = await ctx.db.get(task.staffId);
+                if (staff && staff.currentTaskId === task._id) {
+                    await ctx.db.patch(task.staffId, {
+                        currentTaskId: undefined,
+                    });
+                }
+            }
+        }
+    },
+});
+
 export const get = query({
     args: { id: v.id("requests") },
     handler: async (ctx, args) => {

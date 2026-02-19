@@ -44,6 +44,8 @@ export default function AssignmentDetailPage() {
     const startAssignment = useMutation(api.tasks.startAssignment)
     const completeTask = useMutation(api.tasks.completeTask)
     const recordView = useMutation(api.tasks.recordView)
+    const cancelRequest = useMutation(api.requests.cancel)
+    const createReport = useMutation(api.reports.create)
 
     const isLoading = task === undefined
 
@@ -219,29 +221,72 @@ export default function AssignmentDetailPage() {
             {/* Action buttons */}
             {user && (
                 <div className="flex gap-3">
-                    {canAcknowledge && (
-                        <button
-                            onClick={() => acknowledgeAssignment({ id: task._id, staffId: user._id }).then(() => router.refresh())}
-                            className="flex-1 bg-primary text-primary-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/20"
-                        >
-                            {task.staffId ? "Respond" : "Accept Task"}
-                        </button>
+                    {/* STAFF ONLY ACTIONS */}
+                    {user.role === "camp-staff" && (
+                        <>
+                            {canAcknowledge && (
+                                <button
+                                    onClick={() => acknowledgeAssignment({ id: task._id, staffId: user._id }).then(() => router.refresh())}
+                                    className="flex-1 bg-primary text-primary-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    {task.staffId ? "Respond" : "Accept Task"}
+                                </button>
+                            )}
+                            {canStart && (
+                                <button
+                                    onClick={() => startAssignment({ id: task._id }).then(() => router.refresh())}
+                                    className="flex-1 bg-primary text-primary-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+                                >
+                                    Start Work
+                                </button>
+                            )}
+                            {canComplete && (
+                                <button
+                                    onClick={() => completeTask({ id: task._id }).then(() => router.push("/assignments"))}
+                                    className="flex-1 bg-emerald-600 text-white h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all"
+                                >
+                                    Mark Complete
+                                </button>
+                            )}
+                        </>
                     )}
-                    {canStart && (
-                        <button
-                            onClick={() => startAssignment({ id: task._id }).then(() => router.refresh())}
-                            className="flex-1 bg-primary text-primary-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/20"
-                        >
-                            Start Work
-                        </button>
-                    )}
-                    {canComplete && (
-                        <button
-                            onClick={() => completeTask({ id: task._id }).then(() => router.push("/assignments"))}
-                            className="flex-1 bg-emerald-600 text-white h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all"
-                        >
-                            Mark Complete
-                        </button>
+
+                    {/* CAMPER / REQUEST OWNER ACTIONS */}
+                    {user.role === "camper" && (
+                        <>
+                            {task.status !== "completed" && task.status !== "cancelled" && (
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            if (confirm("Are you sure you want to cancel this request?")) {
+                                                cancelRequest({ id: task.requestId as Id<"requests"> }).then(() => {
+                                                    router.push("/history");
+                                                });
+                                            }
+                                        }}
+                                        className="flex-1 bg-muted text-muted-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/10 hover:text-red-500 transition-all"
+                                    >
+                                        Cancel Request
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            createReport({
+                                                userId: user._id,
+                                                type: "incident",
+                                                title: `Issue with task in room ${task.roomNumber}`,
+                                                message: `Reporting unresponsive staff or issue with task ${task._id}.`,
+                                                status: "unread",
+                                            }).then(() => {
+                                                alert("Report submitted to admin.");
+                                            });
+                                        }}
+                                        className="flex-1 bg-red-500/10 text-red-600 h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                                    >
+                                        Report
+                                    </button>
+                                </>
+                            )}
+                        </>
                     )}
                 </div>
             )}
