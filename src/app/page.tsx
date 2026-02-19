@@ -8,6 +8,7 @@ import { Clock, MapPin, Calendar, Megaphone } from "lucide-react"
 import Link from "next/link"
 import { isWorker } from "@/components/role-guard"
 import { WorkerHome } from "@/components/home/worker-home"
+import { RequestCard } from "@/components/request-card"
 import AssignmentsPage from "./assignments/page"
 
 const WEEK_EVENTS = [
@@ -37,6 +38,7 @@ export default function Home() {
   const { user, loading } = useAuth()
   const announcements = useQuery(api.announcements.list, { priority: "all" })
   const activities = useQuery(api.activities.list)
+  const userRequests = useQuery(api.requests.listForUser, user && user.role === "camper" ? { userId: user._id } : "skip")
 
   if (loading || announcements === undefined || activities === undefined) {
     return (
@@ -101,6 +103,34 @@ export default function Home() {
           <h2 className="text-lg font-bold tracking-tight">Announcements</h2>
           <Link href="/updates" className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors">View All</Link>
         </div>
+
+        {/* Recent Requests for Camper */}
+        {user && user.role === "camper" && userRequests && userRequests.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-lg font-black tracking-tight uppercase text-primary/80">Active Requests</h2>
+              <Link href="/requests" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+                Manage All ({userRequests.length})
+              </Link>
+            </div>
+            <div className="space-y-4">
+              {userRequests
+                .sort((a: any, b: any) => {
+                  // Active status first (pending, in_progress)
+                  const aActive = a.status === "pending" || a.status === "in_progress";
+                  const bActive = b.status === "pending" || b.status === "in_progress";
+                  if (aActive && !bActive) return -1;
+                  if (!aActive && bActive) return 1;
+                  // Then most recent
+                  return b.createdAt - a.createdAt;
+                })
+                .slice(0, 3)
+                .map((req: any) => (
+                  <RequestCard key={req._id} request={req} />
+                ))}
+            </div>
+          </section>
+        )}
 
         <div className="space-y-4">
           {announcements.length > 0 ? (
