@@ -117,8 +117,9 @@ export default function Home() {
               {userRequests
                 .sort((a: any, b: any) => {
                   // Active status first (pending, in_progress)
-                  const aActive = a.status === "pending" || a.status === "in_progress";
-                  const bActive = b.status === "pending" || b.status === "in_progress";
+                  const activeStatuses = ["pending", "in_progress"];
+                  const aActive = activeStatuses.includes(a.status);
+                  const bActive = activeStatuses.includes(b.status);
                   if (aActive && !bActive) return -1;
                   if (!aActive && bActive) return 1;
                   // Then most recent
@@ -160,7 +161,7 @@ export default function Home() {
                     <p className="text-[11px] font-medium text-muted-foreground">
                       {new Date(announcement.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </p>
-                    <Link href={`/updates?id=${announcement._id}`} className="text-[11px] font-semibold text-primary flex items-center gap-1 hover:underline">
+                    <Link href={`/updates/announcements/${announcement._id}`} className="text-[11px] font-semibold text-primary flex items-center gap-1 hover:underline">
                       Read details
                     </Link>
                   </div>
@@ -188,8 +189,9 @@ export default function Home() {
             </div>
           ) : (
             activities.map((event: any) => (
-              <div
+              <Link
                 key={event._id}
+                href={`/updates/activities/${event._id}`}
                 className="min-w-[140px] flex-1 rounded-2xl border bg-card px-3 py-3 text-xs shadow-sm hover:border-primary/50 transition-colors"
               >
                 <p className="text-[10px] font-bold text-primary/70 uppercase tracking-tighter">
@@ -210,7 +212,7 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api"
 import { Card } from "@/components/ui/card"
 import { List, Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Megaphone } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 
 export default function UpdatesPage() {
   const searchParams = useSearchParams()
@@ -50,42 +51,43 @@ export default function UpdatesPage() {
         {activeTab === "announcements" && (
           <div className="space-y-4">
             {announcements.map((item: any) => (
-              <Card
-                key={item._id}
-                className="group overflow-hidden rounded-3xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 border-l-4 border-l-primary"
-              >
-                <div className="flex gap-4">
-                  <div className="h-24 w-28 rounded-2xl bg-muted overflow-hidden shrink-0 shadow-inner">
-                    {item.coverImageUrl ? (
-                      <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 gap-1">
-                        <Megaphone size={20} className="text-muted-foreground/30" />
-                        <span className="text-[8px] text-muted-foreground font-black uppercase tracking-tighter">{item.priority}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 space-y-2 py-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-full ${item.priority === 'High' || item.priority === 'high'
-                        ? 'bg-destructive/10 text-destructive'
-                        : 'bg-primary/10 text-primary'
-                        }`}>
-                        {item.priority}
-                      </span>
-                      <span className="text-[9px] font-bold text-muted-foreground/50">
-                        {new Date(item.createdAt).toLocaleDateString()}
-                      </span>
+              <Link key={item._id} href={`/updates/announcements/${item._id}`}>
+                <Card
+                  className="group overflow-hidden rounded-3xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 border-l-4 border-l-primary"
+                >
+                  <div className="flex gap-4">
+                    <div className="h-24 w-28 rounded-2xl bg-muted overflow-hidden shrink-0 shadow-inner">
+                      {item.coverImageUrl ? (
+                        <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 gap-1">
+                          <Megaphone size={20} className="text-muted-foreground/30" />
+                          <span className="text-[8px] text-muted-foreground font-black uppercase tracking-tighter">{item.priority}</span>
+                        </div>
+                      )}
                     </div>
-                    <h2 className="text-base font-bold leading-tight group-hover:text-primary transition-colors">
-                      {item.title}
-                    </h2>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground line-clamp-2 font-medium">
-                      {item.content}
-                    </p>
+                    <div className="flex-1 space-y-2 py-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-full ${item.priority === 'High' || item.priority === 'high'
+                          ? 'bg-destructive/10 text-destructive'
+                          : 'bg-primary/10 text-primary'
+                          }`}>
+                          {item.priority}
+                        </span>
+                        <span className="text-[9px] font-bold text-muted-foreground/50">
+                          {new Date(item.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h2 className="text-base font-bold leading-tight group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h2>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground line-clamp-2 font-medium">
+                        {item.content}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </Link>
             ))}
             {announcements.length === 0 && (
               <div className="p-12 text-center text-muted-foreground italic text-xs border rounded-3xl border-dashed">
@@ -118,31 +120,33 @@ export default function UpdatesPage() {
             {viewMode === "list" ? (
               <div className="space-y-4">
                 {activities.map((activity: any) => (
-                  <Card key={activity._id} className="p-4 rounded-2xl border bg-card/90 shadow-sm overflow-hidden relative group">
-                    <div className={`absolute top-0 left-0 w-1 h-full ${activity.category === 'Social' ? 'bg-blue-500' :
-                      activity.category === 'Outdoor' ? 'bg-emerald-500' :
-                        activity.category === 'Workshop' ? 'bg-amber-500' : 'bg-primary'
-                      }`} />
-                    <div className="flex justify-between items-start mb-2 pl-2">
-                      <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{activity.category}</p>
-                        <h3 className="text-base font-bold leading-tight mt-0.5">{activity.title}</h3>
+                  <Link key={activity._id} href={`/updates/activities/${activity._id}`}>
+                    <Card className="p-4 rounded-2xl border bg-card/90 shadow-sm overflow-hidden relative group">
+                      <div className={`absolute top-0 left-0 w-1 h-full ${activity.category === 'Social' ? 'bg-blue-500' :
+                        activity.category === 'Outdoor' ? 'bg-emerald-500' :
+                          activity.category === 'Workshop' ? 'bg-amber-500' : 'bg-primary'
+                        }`} />
+                      <div className="flex justify-between items-start mb-2 pl-2">
+                        <div>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{activity.category}</p>
+                          <h3 className="text-base font-bold leading-tight mt-0.5">{activity.title}</h3>
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-4 pl-2 font-medium leading-relaxed">
-                      {activity.description}
-                    </p>
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 pl-2 pt-2 border-t border-border/50">
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary/80">
-                        <Clock size={12} />
-                        {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {activity.time}
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-4 pl-2 font-medium leading-relaxed">
+                        {activity.description}
+                      </p>
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 pl-2 pt-2 border-t border-border/50">
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary/80">
+                          <Clock size={12} />
+                          {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {activity.time}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                          <MapPin size={12} />
+                          {activity.location}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                        <MapPin size={12} />
-                        {activity.location}
-                      </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </Link>
                 ))}
                 {activities.length === 0 && (
                   <div className="p-12 text-center text-muted-foreground italic text-xs border rounded-3xl border-dashed">
@@ -216,16 +220,18 @@ function ActivitiesCalendar({ activities }: { activities: any[] }) {
                   </p>
                 )}
 
-                <div className="bg-muted/30 rounded-2xl p-3 border border-border/50 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-sm font-bold">{activity.title}</h4>
-                    <span className="text-[10px] font-medium text-muted-foreground">{activity.time}</span>
+                <Link href={`/updates/activities/${activity._id}`}>
+                  <div className="bg-muted/30 rounded-2xl p-3 border border-border/50 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="text-sm font-bold">{activity.title}</h4>
+                      <span className="text-[10px] font-medium text-muted-foreground">{activity.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <MapPin size={10} />
+                      <span>{activity.location}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <MapPin size={10} />
-                    <span>{activity.location}</span>
-                  </div>
-                </div>
+                </Link>
               </div>
             )
           })

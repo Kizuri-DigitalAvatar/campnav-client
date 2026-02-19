@@ -55,9 +55,19 @@ export default function AssignmentsPage() {
 
     const assignmentsList = assignments || []
 
-    const filteredAssignments = statusFilter === "all"
+    const filteredAssignments = (statusFilter === "all"
         ? assignmentsList
         : assignmentsList.filter((a) => a.status === statusFilter)
+    ).sort((a: any, b: any) => {
+        // Active status first
+        const activeStatuses = ["pending", "acknowledged", "in_progress"];
+        const aActive = activeStatuses.includes(a.status);
+        const bActive = activeStatuses.includes(b.status);
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        // Then by date
+        return (b.assignedAt || 0) - (a.assignedAt || 0);
+    });
 
     const pendingCount = assignmentsList.filter((a) => a.status === "pending").length
     const inProgressCount = assignmentsList.filter((a) => a.status === "in_progress").length

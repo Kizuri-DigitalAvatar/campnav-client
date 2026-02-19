@@ -66,3 +66,29 @@ export const list = query({
         return results;
     },
 });
+
+export const get = query({
+    args: { id: v.id("announcements") },
+    handler: async (ctx, args) => {
+        const a = await ctx.db.get(args.id);
+        if (!a) return null;
+
+        let coverImageUrl = null;
+        if (a.coverImage) {
+            if (a.coverImage.startsWith("http")) {
+                coverImageUrl = a.coverImage;
+            } else {
+                try {
+                    coverImageUrl = await ctx.storage.getUrl(a.coverImage);
+                } catch (e) {
+                    coverImageUrl = null;
+                }
+            }
+        }
+
+        return {
+            ...a,
+            coverImageUrl,
+        };
+    },
+});

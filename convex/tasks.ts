@@ -261,6 +261,12 @@ export const acknowledgeAssignment = mutation({
             });
         }
         await ctx.db.patch(args.id, patch);
+
+        // Update associated request status to in_progress
+        const assignment = await ctx.db.get(args.id);
+        if (assignment?.requestId) {
+            await ctx.db.patch(assignment.requestId, { status: "in_progress" });
+        }
     },
 });
 
@@ -268,10 +274,14 @@ export const acknowledgeAssignment = mutation({
 export const startAssignment = mutation({
     args: { id: v.id("tasks") },
     handler: async (ctx, args) => {
+        const task = await ctx.db.get(args.id);
         await ctx.db.patch(args.id, {
             status: "in_progress",
             startedAt: Date.now(),
         });
+        if (task?.requestId) {
+            await ctx.db.patch(task.requestId, { status: "in_progress" });
+        }
     },
 });
 
@@ -313,6 +323,11 @@ export const confirmTask = mutation({
             staffConfirmedAt: Date.now(),
         });
 
+        // Update associated request status to in_progress
+        if (assignment.requestId) {
+            await ctx.db.patch(assignment.requestId, { status: "in_progress" });
+        }
+
         // Update staff's currentTaskId to mark them as busy
         await ctx.db.patch(args.staffId, {
             currentTaskId: args.id,
@@ -348,6 +363,20 @@ export const completeTask = mutation({
             status: "completed",
             completedAt: Date.now(),
         });
+
+        // Update associated request status
+        if (assignment.requestId) {
+            await ctx.db.patch(assignment.requestId, {
+                status: "completed",
+            });
+        }
+
+        // Free up the staff member so they can take new tasks
+        if (assignment.staffId) {
+            await ctx.db.patch(assignment.staffId, {
+                currentTaskId: undefined,
+            });
+        }
 
         // Notify camper that the task is completed
         if (assignment.requestId) {

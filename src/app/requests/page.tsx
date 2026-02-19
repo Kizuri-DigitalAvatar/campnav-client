@@ -30,9 +30,20 @@ export default function RequestsPage() {
 
             <div className="space-y-4">
                 {requests.length > 0 ? (
-                    requests.map((req: any) => (
-                        <RequestCard key={req._id} request={req} />
-                    ))
+                    requests
+                        .sort((a: any, b: any) => {
+                            // Active status first
+                            const activeStatuses = ["pending", "in_progress"];
+                            const aActive = activeStatuses.includes(a.status);
+                            const bActive = activeStatuses.includes(b.status);
+                            if (aActive && !bActive) return -1;
+                            if (!aActive && bActive) return 1;
+                            // Then most recent
+                            return b.createdAt - a.createdAt;
+                        })
+                        .map((req: any) => (
+                            <RequestCard key={req._id} request={req} />
+                        ))
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                         <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
