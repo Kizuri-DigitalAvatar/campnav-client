@@ -1,5 +1,5 @@
 import { internalMutation } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { api } from "./_generated/api";
 
 // Internal function called by cron job to check for worker reminders
 export const checkUnacknowledgedAssignments = internalMutation({
@@ -9,13 +9,13 @@ export const checkUnacknowledgedAssignments = internalMutation({
 
         // Get all pending assignments
         const assignments = await ctx.db
-            .query("housekeeping")
+            .query("tasks")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
 
         // Filter for those that haven't been acknowledged and haven't had a reminder recently
         const needReminder = assignments.filter((a) => {
-            if (!a.housekeeperId || a.acknowledgedAt) return false;
+            if (!a.staffId || a.acknowledgedAt) return false;
 
             // Initial reminder after 5 minutes
             const initialThreshold = Date.now() - 5 * 60 * 1000;
@@ -28,16 +28,16 @@ export const checkUnacknowledgedAssignments = internalMutation({
         });
 
         for (const assignment of needReminder) {
-            if (!assignment.housekeeperId) continue;
+            if (!assignment.staffId) continue;
 
-            const worker = await ctx.db.get(assignment.housekeeperId);
+            const worker = await ctx.db.get(assignment.staffId);
             if (!worker) continue;
 
             const reminderCount = assignment.reminderCount || 0;
 
             // Send reminder to worker
             await ctx.runMutation(api.notifications.sendReminderNotification, {
-                userId: assignment.housekeeperId,
+                userId: assignment.staffId,
                 assignmentId: assignment._id,
                 message: `Reminder: You have a pending ${assignment.serviceType} assignment for ${assignment.roomNumber}. Please acknowledge.`,
             });
@@ -60,10 +60,10 @@ export const checkUnrespondedRequests = internalMutation({
     handler: async (ctx) => {
         const startOfDay = new Date().setHours(0, 0, 0, 0);
 
-        // Get all pending housekeeping tasks (assignments)
+        // Get all pending tasks (assignments)
         // A request is "unresponded" if no staff has confirmed it yet.
         const tasks = await ctx.db
-            .query("housekeeping")
+            .query("tasks")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
 

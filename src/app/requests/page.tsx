@@ -59,42 +59,44 @@ export default function RequestsPage() {
             <div className="space-y-4">
                 {requests.length > 0 ? (
                     requests.map((req: any) => (
-                        <Card key={req._id} className="relative overflow-hidden rounded-2xl border bg-card/90 p-4 shadow-sm">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-3 flex-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                            {getIcon(req.type)}
+                        <Link key={req._id} href={`/requests/${req._id}`} className="block transition-transform active:scale-[0.98]">
+                            <Card className="relative overflow-hidden rounded-2xl border bg-card/90 p-4 shadow-sm hover:border-primary/30 transition-colors">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="space-y-3 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                {getIcon(req.type)}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold capitalize">{req.type}</p>
+                                                <p className="text-[10px] text-muted-foreground">Room {req.roomNumber}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-semibold capitalize">{req.type}</p>
-                                            <p className="text-[10px] text-muted-foreground">Room {req.roomNumber}</p>
+
+                                        <p className="text-xs text-foreground/80 leading-relaxed italic line-clamp-2">
+                                            "{req.description}"
+                                        </p>
+
+                                        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                <span>{new Date(req.createdAt).toLocaleDateString()}</span>
+                                                <span>•</span>
+                                                <span>{new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border ${getStatusStyle(req.status)}`}>
+                                                {getStatusIcon(req.status)}
+                                                {req.status.replace("_", " ")}
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <p className="text-xs text-foreground/80 leading-relaxed italic">
-                                        "{req.description}"
-                                    </p>
-
-                                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                            <span>{new Date(req.createdAt).toLocaleDateString()}</span>
-                                            <span>•</span>
-                                            <span>{new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    {req.imageUrl && (
+                                        <div className="h-16 w-16 rounded-xl bg-muted overflow-hidden shrink-0 border border-border/50">
+                                            <img src={req.imageUrl} alt="Request" className="h-full w-full object-cover" />
                                         </div>
-                                        <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border ${getStatusStyle(req.status)}`}>
-                                            {getStatusIcon(req.status)}
-                                            {req.status.replace("_", " ")}
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
-                                {req.imageUrl && (
-                                    <div className="h-16 w-16 rounded-xl bg-muted overflow-hidden shrink-0 border border-border/50">
-                                        <img src={req.imageUrl} alt="Request" className="h-full w-full object-cover" />
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
+                            </Card>
+                        </Link>
                     ))
                 ) : (
                     <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">

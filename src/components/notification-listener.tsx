@@ -6,10 +6,12 @@ import { api } from "../../convex/_generated/api"
 import { useAuth } from "@/components/auth-provider"
 import { toast } from "sonner"
 import { Bell } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function NotificationListener() {
     const { user } = useAuth()
     const userId = user?._id as any
+    const router = useRouter()
 
     // Only query if we have a user
     // The query should now be available since convex dev has run
@@ -37,8 +39,11 @@ export function NotificationListener() {
                 action: {
                     label: "Details",
                     onClick: () => {
-                        // Navigation could be handled here
-                        console.log("Details for:", notification)
+                        if (notification.assignmentId) {
+                            router.push(`/assignments/${notification.assignmentId}`)
+                        } else {
+                            router.push("/assignments")
+                        }
                     },
                 },
             })

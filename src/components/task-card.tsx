@@ -4,10 +4,10 @@ import { Card } from "@/components/ui/card"
 import { Clock, MapPin, CheckCircle, PlayCircle, AlertCircle } from "lucide-react"
 import { Id } from "../../convex/_generated/dataModel"
 
-interface AssignmentCardProps {
+interface TaskCardProps {
     assignment: {
-        _id: Id<"housekeeping">
-        housekeeperId?: Id<"users">
+        _id: Id<"tasks">
+        staffId?: Id<"users">
         roomNumber: string
         serviceType: string
         status: string
@@ -29,21 +29,21 @@ interface AssignmentCardProps {
             imageUrl?: string | null
         } | null
     }
-    onAcknowledge?: (id: Id<"housekeeping">) => void
-    onStart?: (id: Id<"housekeeping">) => void
-    onAddUpdate?: (id: Id<"housekeeping">) => void
-    onComplete?: (id: Id<"housekeeping">) => void
+    onAcknowledge?: (id: Id<"tasks">) => void
+    onStart?: (id: Id<"tasks">) => void
+    onAddUpdate?: (id: Id<"tasks">) => void
+    onComplete?: (id: Id<"tasks">) => void
     readOnly?: boolean
 }
 
-export function AssignmentCard({
+export function TaskCard({
     assignment,
     onAcknowledge,
     onStart,
     onAddUpdate,
     onComplete,
     readOnly = false,
-}: AssignmentCardProps) {
+}: TaskCardProps) {
     const getStatusColor = (status: string) => {
         switch (status) {
             case "completed":
@@ -173,7 +173,7 @@ export function AssignmentCard({
                             onClick={() => onAcknowledge(assignment._id)}
                             className="flex-1 bg-primary text-primary-foreground h-10 px-4 rounded-xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all"
                         >
-                            {assignment.housekeeperId ? "Respond" : "Accept Task"}
+                            {assignment.staffId ? "Respond" : "Accept Task"}
                         </button>
                     )}
                     {assignment.status === "acknowledged" && onStart && (

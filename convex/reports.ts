@@ -2,6 +2,22 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 
+export const create = mutation({
+    args: {
+        userId: v.id("users"),
+        type: v.string(), // "bug", "feedback", "incident", "staff_unresponsive"
+        title: v.string(),
+        message: v.string(),
+        status: v.string(), // "unread", "resolved"
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db.insert("reports", {
+            ...args,
+            createdAt: Date.now(),
+        });
+    },
+});
+
 export const markAsResolved = mutation({
     args: { id: v.id("reports") },
     handler: async (ctx, args) => {

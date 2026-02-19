@@ -6,7 +6,7 @@ import { Doc } from "./_generated/dataModel";
 export const sendRoleNotification = mutation({
     args: {
         role: v.string(),
-        assignmentId: v.optional(v.id("housekeeping")),
+        assignmentId: v.optional(v.id("tasks")),
         requestId: v.optional(v.id("requests")),
         type: v.string(), // "assignment", "reminder", "general"
         message: v.string(),
@@ -80,7 +80,7 @@ export const sendRoleNotification = mutation({
 export const sendAssignmentNotification = mutation({
     args: {
         userId: v.id("users"),
-        assignmentId: v.id("housekeeping"),
+        assignmentId: v.id("tasks"),
         message: v.string(),
     },
     handler: async (ctx, args) => {
@@ -139,7 +139,7 @@ export const sendAssignmentNotification = mutation({
 export const sendReminderNotification = mutation({
     args: {
         userId: v.id("users"),
-        assignmentId: v.id("housekeeping"),
+        assignmentId: v.id("tasks"),
         message: v.string(),
     },
     handler: async (ctx, args) => {
@@ -208,7 +208,7 @@ export const sendReminderNotification = mutation({
 export const sendCamperNotification = mutation({
     args: {
         userId: v.id("users"),
-        assignmentId: v.optional(v.id("housekeeping")),
+        assignmentId: v.optional(v.id("tasks")),
         requestId: v.optional(v.id("requests")),
         type: v.string(), // "acceptance", "completion", "escalation"
         message: v.string(),
@@ -255,7 +255,7 @@ export const sendCamperNotification = mutation({
 // Notify admin about unresponsive worker or request
 export const notifyAdminUnresponsive = mutation({
     args: {
-        assignmentId: v.optional(v.id("housekeeping")),
+        assignmentId: v.optional(v.id("tasks")),
         requestId: v.optional(v.id("requests")),
         workerName: v.optional(v.string()),
         message: v.string(),
@@ -323,7 +323,7 @@ export const markNotificationDelivered = mutation({
 
 // Get notification history for an assignment
 export const getNotificationHistory = query({
-    args: { assignmentId: v.id("housekeeping") },
+    args: { assignmentId: v.id("tasks") },
     handler: async (ctx, args) => {
         return await ctx.db
             .query("notifications")
@@ -352,7 +352,7 @@ export const getUnresponsiveWorkers = query({
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
 
         const assignments = await ctx.db
-            .query("housekeeping")
+            .query("tasks")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
 
@@ -362,7 +362,7 @@ export const getUnresponsiveWorkers = query({
 
         return Promise.all(
             unresponsive.map(async (a) => {
-                const worker = a.housekeeperId ? await ctx.db.get(a.housekeeperId) : null;
+                const worker = a.staffId ? await ctx.db.get(a.staffId) : null;
                 // Double check if worker exists and has the expected fields
                 // Convex ctx.db.get return value depends on the table schema
                 const workerData = worker as any;

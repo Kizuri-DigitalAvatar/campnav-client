@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/components/auth-provider"
 import { api } from "../../../convex/_generated/api"
 
-export default function HouseKeepingPage() {
+export default function TasksPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [instructions, setInstructions] = useState("")

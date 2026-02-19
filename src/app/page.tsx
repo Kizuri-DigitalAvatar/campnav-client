@@ -3,7 +3,6 @@
 import { useQuery } from "convex/react"
 import { useAuth } from "@/components/auth-provider"
 import { api } from "../../convex/_generated/api"
-import { WeatherWidget } from "@/components/home/weather-widget"
 import { QuickAccessGrid } from "@/components/home/quick-access-grid"
 import { Clock, MapPin, Calendar, Megaphone } from "lucide-react"
 import Link from "next/link"

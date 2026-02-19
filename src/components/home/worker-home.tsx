@@ -2,31 +2,42 @@
 
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
-import { WeatherWidget } from "./weather-widget"
 import { ClipboardList, Clock, MapPin, CheckCircle, PlayCircle, Megaphone, ArrowRight } from "lucide-react"
 import Link from "next/link"
-import { AssignmentCard } from "@/components/assignment-card"
+import { TaskCard } from "@/components/task-card"
 import { Id } from "../../../convex/_generated/dataModel"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { MultimediaUpload } from "@/components/multimedia-upload"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function WorkerHome({ user }: { user: any }) {
-    const [selectedAssignmentId, setSelectedAssignmentId] = useState<Id<"housekeeping"> | null>(null)
+    const [selectedAssignmentId, setSelectedAssignmentId] = useState<Id<"tasks"> | null>(null)
 
     const assignments = useQuery(
-        api.housekeeping.getWorkerAssignments,
+        api.tasks.getWorkerAssignments,
         { workerId: user._id }
     )
 
     const announcements = useQuery(api.announcements.list, { priority: "all" })
 
-    const acknowledgeAssignment = useMutation(api.housekeeping.acknowledgeAssignment)
-    const startAssignment = useMutation(api.housekeeping.startAssignment)
-    const completeAssignment = useMutation(api.housekeeping.completeTask)
+    const acknowledgeAssignment = useMutation(api.tasks.acknowledgeAssignment)
+    const startAssignment = useMutation(api.tasks.startAssignment)
+    const completeAssignment = useMutation(api.tasks.completeTask)
+    const recordView = useMutation(api.tasks.recordView)
 
     const isLoading = assignments === undefined || announcements === undefined
+
+    const assignmentsList = assignments || []
+    const availableTasks = assignmentsList.filter((a: any) => !a.staffId && a.status === "pending")
+
+    useEffect(() => {
+        if (!isLoading && availableTasks.length > 0 && user?._id) {
+            availableTasks.forEach((task: any) => {
+                recordView({ id: task._id, staffId: user._id })
+            })
+        }
+    }, [isLoading, availableTasks.length, user?._id, recordView])
 
     if (isLoading) {
         return (
@@ -53,31 +64,29 @@ export function WorkerHome({ user }: { user: any }) {
         )
     }
 
-    const assignmentsList = assignments || []
     const announcementsList = announcements || []
 
-    const pendingTasks = assignmentsList.filter(a => a.status === "pending")
-    const inProgressTasks = assignmentsList.filter(a => a.status === "in_progress")
-    const myTasks = assignmentsList.filter(a => a.housekeeperId === user._id)
-    const availableTasks = assignmentsList.filter(a => !a.housekeeperId && a.status === "pending")
+    const pendingTasks = assignmentsList.filter((a: any) => a.status === "pending")
+    const inProgressTasks = assignmentsList.filter((a: any) => a.status === "in_progress")
+    const myTasks = assignmentsList.filter((a: any) => a.staffId === user._id)
 
-    const activeTask = inProgressTasks.find(a => a.housekeeperId === user._id) ||
-        myTasks.find(a => a.status === "acknowledged") ||
-        myTasks.find(a => a.status === "pending")
+    const activeTask = inProgressTasks.find((a: any) => a.staffId === user._id) ||
+        myTasks.find((a: any) => a.status === "acknowledged") ||
+        myTasks.find((a: any) => a.status === "pending")
 
-    const handleAcknowledge = async (id: Id<"housekeeping">) => {
-        await acknowledgeAssignment({ id, housekeeperId: user._id })
+    const handleAcknowledge = async (id: Id<"tasks">) => {
+        await acknowledgeAssignment({ id, staffId: user._id })
     }
 
-    const handleStart = async (id: Id<"housekeeping">) => {
+    const handleStart = async (id: Id<"tasks">) => {
         await startAssignment({ id })
     }
 
-    const handleAddUpdate = (id: Id<"housekeeping">) => {
+    const handleAddUpdate = (id: Id<"tasks">) => {
         setSelectedAssignmentId(id)
     }
 
-    const handleComplete = async (id: Id<"housekeeping">) => {
+    const handleComplete = async (id: Id<"tasks">) => {
         if (confirm("Mark this assignment as completed?")) {
             await completeAssignment({ id })
         }
@@ -109,7 +118,7 @@ export function WorkerHome({ user }: { user: any }) {
                 </div>
             </header>
 
-            <WeatherWidget />
+            {/* <WeatherWidget /> */}
 
             {/* Active / Next Task Card */}
             <section className="space-y-3">
@@ -123,7 +132,7 @@ export function WorkerHome({ user }: { user: any }) {
                 </div>
 
                 {activeTask ? (
-                    <AssignmentCard
+                    <TaskCard
                         assignment={activeTask}
                         onAcknowledge={handleAcknowledge}
                         onStart={handleStart}
@@ -131,7 +140,7 @@ export function WorkerHome({ user }: { user: any }) {
                         onComplete={handleComplete}
                     />
                 ) : pendingTasks.length > 0 ? (
-                    <AssignmentCard
+                    <TaskCard
                         assignment={pendingTasks[0]}
                         onAcknowledge={handleAcknowledge}
                         onStart={handleStart}
@@ -154,9 +163,9 @@ export function WorkerHome({ user }: { user: any }) {
                     </div>
 
                     <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-                        {availableTasks.map((task) => (
+                        {availableTasks.map((task: any) => (
                             <div key={task._id} className="min-w-[280px] max-w-[280px]">
-                                <AssignmentCard
+                                <TaskCard
                                     assignment={task}
                                     onAcknowledge={handleAcknowledge}
                                     onStart={handleStart}

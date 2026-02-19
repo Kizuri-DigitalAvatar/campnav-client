@@ -14,7 +14,6 @@ import type * as cron from "../cron.js";
 import type * as crons from "../crons.js";
 import type * as email from "../email.js";
 import type * as files from "../files.js";
-import type * as housekeeping from "../housekeeping.js";
 import type * as images from "../images.js";
 import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
@@ -23,6 +22,7 @@ import type * as reports from "../reports.js";
 import type * as requests from "../requests.js";
 import type * as rooms from "../rooms.js";
 import type * as search from "../search.js";
+import type * as tasks from "../tasks.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
 
@@ -39,7 +39,6 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   email: typeof email;
   files: typeof files;
-  housekeeping: typeof housekeeping;
   images: typeof images;
   notifications: typeof notifications;
   orders: typeof orders;
@@ -48,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   requests: typeof requests;
   rooms: typeof rooms;
   search: typeof search;
+  tasks: typeof tasks;
   test: typeof test;
   users: typeof users;
 }>;

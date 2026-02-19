@@ -9,7 +9,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { ClientLayout } from "@/components/client-layout";
 import { Toaster } from "sonner";
 
-const geistSans = Geist({
+const geistSans = Geist({ 
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });

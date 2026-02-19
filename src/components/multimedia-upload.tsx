@@ -24,7 +24,7 @@ export function MultimediaUpload({
     const audioChunksRef = useRef<Blob[]>([])
 
     const generateUploadUrl = useMutation(api.files.generateUploadUrl)
-    const addUpdate = useMutation(api.housekeeping.addUpdate)
+    const addUpdate = useMutation(api.tasks.addUpdate)
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {

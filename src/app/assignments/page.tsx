@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { useAuth } from "@/components/auth-provider"
-import { AssignmentCard } from "@/components/assignment-card"
+import { TaskCard } from "@/components/task-card"
 import { MultimediaUpload } from "@/components/multimedia-upload"
 import { ClipboardList, Filter } from "lucide-react"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -13,19 +13,19 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AssignmentsPage() {
     const [statusFilter, setStatusFilter] = useState<string>("all")
-    const [selectedAssignmentId, setSelectedAssignmentId] = useState<Id<"housekeeping"> | null>(null)
+    const [selectedAssignmentId, setSelectedAssignmentId] = useState<Id<"tasks"> | null>(null)
 
     // Get current user from auth context
     const { user, loading } = useAuth()
 
     const assignments = useQuery(
-        api.housekeeping.getWorkerAssignments,
+        api.tasks.getWorkerAssignments,
         user ? { workerId: user._id } : "skip"
     )
 
-    const acknowledgeAssignment = useMutation(api.housekeeping.acknowledgeAssignment)
-    const startAssignment = useMutation(api.housekeeping.startAssignment)
-    const completeAssignment = useMutation(api.housekeeping.completeTask)
+    const acknowledgeAssignment = useMutation(api.tasks.acknowledgeAssignment)
+    const startAssignment = useMutation(api.tasks.startAssignment)
+    const completeAssignment = useMutation(api.tasks.completeTask)
 
     const isLoading = loading || assignments === undefined
 
@@ -62,19 +62,19 @@ export default function AssignmentsPage() {
     const pendingCount = assignmentsList.filter((a) => a.status === "pending").length
     const inProgressCount = assignmentsList.filter((a) => a.status === "in_progress").length
 
-    const handleAcknowledge = async (id: Id<"housekeeping">) => {
-        await acknowledgeAssignment({ id })
+    const handleAcknowledge = async (id: Id<"tasks">) => {
+        await acknowledgeAssignment({ id, staffId: user?._id })
     }
 
-    const handleStart = async (id: Id<"housekeeping">) => {
+    const handleStart = async (id: Id<"tasks">) => {
         await startAssignment({ id })
     }
 
-    const handleAddUpdate = (id: Id<"housekeeping">) => {
+    const handleAddUpdate = (id: Id<"tasks">) => {
         setSelectedAssignmentId(id)
     }
 
-    const handleComplete = async (id: Id<"housekeeping">) => {
+    const handleComplete = async (id: Id<"tasks">) => {
         await completeAssignment({ id })
     }
 
@@ -119,7 +119,7 @@ export default function AssignmentsPage() {
                 {filteredAssignments.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredAssignments.map((assignment) => (
-                            <AssignmentCard
+                            <TaskCard
                                 key={assignment._id}
                                 assignment={assignment}
                                 onAcknowledge={handleAcknowledge}

@@ -6,14 +6,14 @@ import { api } from "../../../convex/_generated/api"
 import { Card } from "@/components/ui/card"
 import { ShoppingBag, Clock, ChevronRight, ClipboardList, CheckCircle2, XCircle } from "lucide-react"
 import { isWorker } from "@/components/role-guard"
-import { AssignmentCard } from "@/components/assignment-card"
+import { TaskCard } from "@/components/task-card"
 
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function HistoryPage() {
     const { user, loading } = useAuth()
     const orders = useQuery(api.orders.listForUser, user && !isWorker(user.role) ? { userId: user._id } : "skip")
-    const assignments = useQuery(api.housekeeping.getWorkerAssignments, user && isWorker(user.role) ? { workerId: user._id } : "skip")
+    const assignments = useQuery(api.tasks.getWorkerAssignments, user && isWorker(user.role) ? { workerId: user._id } : "skip")
 
     const isLoading = loading || (user && (isWorker(user.role) ? assignments === undefined : orders === undefined))
 
@@ -68,7 +68,7 @@ export default function HistoryPage() {
                         </div>
                     ) : (
                         completedAssignments.map((assignment: any) => (
-                            <AssignmentCard
+                            <TaskCard
                                 key={assignment._id}
                                 assignment={assignment}
                                 // View only mode for history

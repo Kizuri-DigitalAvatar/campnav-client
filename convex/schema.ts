@@ -18,7 +18,7 @@ export default defineSchema({
     password: v.optional(v.string()),
     role: v.optional(v.string()), // admin, camper, camp-staff, visitor
     assignedDuties: v.optional(v.array(v.string())), // For camp-staff: ["housekeeping", "maintenance", "laundry"]
-    currentTaskId: v.optional(v.id("housekeeping")), // For tracking if camp-staff is vacant
+    currentTaskId: v.optional(v.id("tasks")), // For tracking if camp-staff is vacant
     phoneNumber: v.optional(v.string()), // For SMS notifications
     notificationPreferences: v.optional(v.object({
       push: v.boolean(),
@@ -52,12 +52,13 @@ export default defineSchema({
     coverImage: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_priority", ["priority"]),
-  housekeeping: defineTable({
-    housekeeperId: v.optional(v.id("users")), // camp-staff assigned
+  tasks: defineTable({
+    staffId: v.optional(v.id("users")), // camp-staff assigned
     requestId: v.optional(v.id("requests")),
     roomNumber: v.string(),
     serviceType: v.string(), // e.g. "housekeeping", "maintenance", "laundry"
     status: v.string(), // "pending", "confirmed", "in_progress", "completed", "rated"
+    viewedBy: v.optional(v.array(v.id("users"))), // Track which staff members have viewed this task
     assignedAt: v.number(),
     staffConfirmedAt: v.optional(v.number()), // When camp-staff confirms acceptance
     acknowledgedAt: v.optional(v.number()), // When worker responds
@@ -76,11 +77,12 @@ export default defineSchema({
     reminderCount: v.optional(v.number()), // Number of reminders sent
     lastEscalationSent: v.optional(v.number()), // For camper/admin escalation
     escalationLevel: v.optional(v.number()), // 1 through 4
-  }).index("by_housekeeperId", ["housekeeperId"])
-    .index("by_status", ["status"]),
+  }).index("by_staffId", ["staffId"])
+    .index("by_status", ["status"])
+    .index("by_requestId", ["requestId"]),
   notifications: defineTable({
     userId: v.id("users"),
-    assignmentId: v.optional(v.id("housekeeping")),
+    assignmentId: v.optional(v.id("tasks")),
     requestId: v.optional(v.id("requests")),
     type: v.string(), // "assignment", "reminder", "admin_alert"
     channel: v.string(), // "push", "email", "sms"
@@ -90,7 +92,8 @@ export default defineSchema({
     deliveredAt: v.optional(v.number()),
   }).index("by_userId", ["userId"])
     .index("by_assignmentId", ["assignmentId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_requestId", ["requestId"]),
   reports: defineTable({
     userId: v.id("users"),
     type: v.string(), // "bug", "feedback", "incident"

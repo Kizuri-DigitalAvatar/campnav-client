@@ -4,13 +4,13 @@ import { api } from "./_generated/api";
 
 export const assign = mutation({
     args: {
-        housekeeperId: v.id("users"),
+        staffId: v.id("users"),
         roomNumber: v.string(),
         serviceType: v.string(),
     },
     handler: async (ctx, args) => {
-        return await ctx.db.insert("housekeeping", {
-            housekeeperId: args.housekeeperId,
+        return await ctx.db.insert("tasks", {
+            staffId: args.staffId,
             roomNumber: args.roomNumber,
             serviceType: args.serviceType,
             status: "pending",
@@ -20,15 +20,39 @@ export const assign = mutation({
 });
 
 export const updateStatus = mutation({
-    args: { id: v.id("housekeeping"), status: v.string() },
+    args: { id: v.id("tasks"), status: v.string() },
     handler: async (ctx, args) => {
         await ctx.db.patch(args.id, { status: args.status });
     },
 });
 
 export const remove = mutation({
-    args: { id: v.id("housekeeping") },
+    args: { id: v.id("tasks") },
     handler: async (ctx, args) => {
+        const assignment = await ctx.db.get(args.id);
+        if (!assignment) return;
+
+        // 1. If assigned to a staff, clear their currentTaskId
+        if (assignment.staffId) {
+            const staff = await ctx.db.get(assignment.staffId);
+            if (staff && staff.currentTaskId === assignment._id) {
+                await ctx.db.patch(assignment.staffId, {
+                    currentTaskId: undefined,
+                });
+            }
+        }
+
+        // 2. Cleanup associated notifications
+        const notifications = await ctx.db
+            .query("notifications")
+            .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.id))
+            .collect();
+
+        for (const notification of notifications) {
+            await ctx.db.delete(notification._id);
+        }
+
+        // 3. Delete the assignment
         await ctx.db.delete(args.id);
     },
 });
@@ -36,18 +60,18 @@ export const remove = mutation({
 export const list = query({
     args: {},
     handler: async (ctx) => {
-        const assignments = await ctx.db.query("housekeeping").order("desc").collect();
+        const assignments = await ctx.db.query("tasks").order("desc").collect();
         return Promise.all(
             assignments.map(async (a) => {
-                let housekeeperName = "Unknown";
-                if (a.housekeeperId) {
+                let staffName = "Unknown";
+                if (a.staffId) {
                     try {
-                        const housekeeper = await ctx.db.get(a.housekeeperId);
-                        if (housekeeper) {
-                            housekeeperName = housekeeper.name;
+                        const staff = await ctx.db.get(a.staffId);
+                        if (staff) {
+                            staffName = staff.name;
                         }
                     } catch (e) {
-                        console.error("Failed to fetch housekeeper", a._id, a.housekeeperId, e);
+                        console.error("Failed to fetch staff member", a._id, a.staffId, e);
                     }
                 }
                 // Get associated request details if any
@@ -62,9 +86,79 @@ export const list = query({
                     }
                 }
 
-                return { ...a, housekeeperName, requestDetails };
+                return { ...a, staffName, requestDetails };
             })
         );
+    },
+});
+
+// Record that a staff member has viewed an unassigned/pending task
+export const recordView = mutation({
+    args: { id: v.id("tasks"), staffId: v.id("users") },
+    handler: async (ctx, args) => {
+        const task = await ctx.db.get(args.id);
+        if (!task) return;
+
+        // Only record views for pending tasks
+        if (task.status !== "pending") return;
+
+        const viewedBy = task.viewedBy || [];
+        if (!viewedBy.includes(args.staffId)) {
+            viewedBy.push(args.staffId);
+            await ctx.db.patch(args.id, { viewedBy });
+        }
+    },
+});
+
+// Get a single task by ID with full details
+export const getById = query({
+    args: { id: v.id("tasks") },
+    handler: async (ctx, args) => {
+        const task = await ctx.db.get(args.id);
+        if (!task) return null;
+
+        let staffName = "Unassigned";
+        if (task.staffId) {
+            const staff = await ctx.db.get(task.staffId);
+            if (staff) staffName = staff.name;
+        }
+
+        // Get names of people who viewed it
+        const viewers = await Promise.all(
+            (task.viewedBy || []).map(async (id) => {
+                const u = await ctx.db.get(id);
+                return u?.name || "Unknown Staff";
+            })
+        );
+
+        let requestDetails = null;
+        if (task.requestId) {
+            const req = await ctx.db.get(task.requestId);
+            if (req) {
+                let imageUrl = null;
+                if (req.image) {
+                    try { imageUrl = await ctx.storage.getUrl(req.image); } catch (e) { }
+                }
+                requestDetails = { ...req, imageUrl };
+            }
+        }
+
+        const updatesWithUrls = await Promise.all(
+            (task.updates || []).map(async (update) => {
+                const imageUrls = await Promise.all(
+                    (update.images || []).map(async (id) => {
+                        try { return await ctx.storage.getUrl(id); } catch (e) { return null; }
+                    })
+                );
+                let audioUrl = null;
+                if (update.audio) {
+                    try { audioUrl = await ctx.storage.getUrl(update.audio); } catch (e) { }
+                }
+                return { ...update, imageUrls: imageUrls.filter(Boolean), audioUrl };
+            })
+        );
+
+        return { ...task, staffName, viewers, requestDetails, updatesWithUrls };
     },
 });
 
@@ -74,19 +168,19 @@ export const getWorkerAssignments = query({
     handler: async (ctx, args) => {
         // Get tasks assigned explicitly to this worker
         const assignedTasks = await ctx.db
-            .query("housekeeping")
-            .withIndex("by_housekeeperId", (q) => q.eq("housekeeperId", args.workerId))
+            .query("tasks")
+            .withIndex("by_staffId", (q) => q.eq("staffId", args.workerId))
             .collect();
 
         // Also get unassigned tasks that are pending
-        // Since we don't have a specific index for housekeeperId === null, 
+        // Since we don't have a specific index for staffId === null, 
         // we'll query by status "pending" and filter.
         const unassignedTasks = await ctx.db
-            .query("housekeeping")
+            .query("tasks")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
 
-        const filteredUnassigned = unassignedTasks.filter(t => !t.housekeeperId);
+        const filteredUnassigned = unassignedTasks.filter(t => !t.staffId);
 
         // Combine and sort by assignedAt
         const allTasks = [...assignedTasks, ...filteredUnassigned].sort((a, b) => b.assignedAt - a.assignedAt);
@@ -152,14 +246,19 @@ export const getWorkerAssignments = query({
 
 // Worker acknowledges assignment or picks up unassigned task
 export const acknowledgeAssignment = mutation({
-    args: { id: v.id("housekeeping"), housekeeperId: v.optional(v.id("users")) },
+    args: { id: v.id("tasks"), staffId: v.optional(v.id("users")) },
     handler: async (ctx, args) => {
         const patch: any = {
             status: "acknowledged",
             acknowledgedAt: Date.now(),
         };
-        if (args.housekeeperId) {
-            patch.housekeeperId = args.housekeeperId;
+        if (args.staffId) {
+            patch.staffId = args.staffId;
+
+            // Mark staff as busy
+            await ctx.db.patch(args.staffId, {
+                currentTaskId: args.id,
+            });
         }
         await ctx.db.patch(args.id, patch);
     },
@@ -167,7 +266,7 @@ export const acknowledgeAssignment = mutation({
 
 // Worker starts assignment
 export const startAssignment = mutation({
-    args: { id: v.id("housekeeping") },
+    args: { id: v.id("tasks") },
     handler: async (ctx, args) => {
         await ctx.db.patch(args.id, {
             status: "in_progress",
@@ -179,7 +278,7 @@ export const startAssignment = mutation({
 // Worker adds update with multimedia
 export const addUpdate = mutation({
     args: {
-        id: v.id("housekeeping"),
+        id: v.id("tasks"),
         text: v.optional(v.string()),
         images: v.optional(v.array(v.string())), // Storage IDs
         audio: v.optional(v.string()), // Storage ID
@@ -204,7 +303,7 @@ export const addUpdate = mutation({
 
 // Camp-staff confirms they accept the task
 export const confirmTask = mutation({
-    args: { id: v.id("housekeeping"), staffId: v.id("users") },
+    args: { id: v.id("tasks"), staffId: v.id("users") },
     handler: async (ctx, args) => {
         const assignment = await ctx.db.get(args.id);
         if (!assignment) throw new Error("Assignment not found");
@@ -240,7 +339,7 @@ export const confirmTask = mutation({
 
 // Camp-staff marks task as completed
 export const completeTask = mutation({
-    args: { id: v.id("housekeeping") },
+    args: { id: v.id("tasks") },
     handler: async (ctx, args) => {
         const assignment = await ctx.db.get(args.id);
         if (!assignment) throw new Error("Assignment not found");
@@ -270,7 +369,7 @@ export const completeTask = mutation({
 
 // Camper confirms completion
 export const camperConfirmCompletion = mutation({
-    args: { id: v.id("housekeeping") },
+    args: { id: v.id("tasks") },
     handler: async (ctx, args) => {
         const assignment = await ctx.db.get(args.id);
         if (!assignment) throw new Error("Assignment not found");
@@ -280,8 +379,8 @@ export const camperConfirmCompletion = mutation({
         });
 
         // Free up the staff member
-        if (assignment.housekeeperId) {
-            await ctx.db.patch(assignment.housekeeperId, {
+        if (assignment.staffId) {
+            await ctx.db.patch(assignment.staffId, {
                 currentTaskId: undefined,
             });
         }
@@ -298,7 +397,7 @@ export const camperConfirmCompletion = mutation({
 // Camper rates the completed task
 export const rateTask = mutation({
     args: {
-        id: v.id("housekeeping"),
+        id: v.id("tasks"),
         rating: v.number(), // 1-5
         feedback: v.optional(v.string()),
     },
@@ -322,8 +421,8 @@ export const getStaffRating = query({
     args: { staffId: v.id("users") },
     handler: async (ctx, args) => {
         const tasks = await ctx.db
-            .query("housekeeping")
-            .withIndex("by_housekeeperId", (q) => q.eq("housekeeperId", args.staffId))
+            .query("tasks")
+            .withIndex("by_staffId", (q) => q.eq("staffId", args.staffId))
             .collect();
 
         const ratedTasks = tasks.filter(t => t.rating !== undefined);
