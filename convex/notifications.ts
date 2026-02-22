@@ -349,7 +349,7 @@ export const getMyPendingNotifications = query({
 export const getUnresponsiveWorkers = query({
     args: {},
     handler: async (ctx) => {
-        const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
 
         const assignments = await ctx.db
             .query("tasks")
@@ -357,7 +357,7 @@ export const getUnresponsiveWorkers = query({
             .collect();
 
         const unresponsive = assignments.filter(
-            (a) => a.assignedAt < fiveMinutesAgo && !a.acknowledgedAt
+            (a) => a.assignedAt < tenMinutesAgo && !a.acknowledgedAt
         );
 
         return Promise.all(

@@ -5,7 +5,7 @@ import { api } from "./_generated/api";
 export const checkUnacknowledgedAssignments = internalMutation({
     args: {},
     handler: async (ctx) => {
-        const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+        const twoHoursAgo = Date.now() - 120 * 60 * 1000;
 
         // Get all pending assignments
         const assignments = await ctx.db
@@ -17,12 +17,12 @@ export const checkUnacknowledgedAssignments = internalMutation({
         const needReminder = assignments.filter((a) => {
             if (!a.staffId || a.acknowledgedAt) return false;
 
-            // Initial reminder after 5 minutes
-            const initialThreshold = Date.now() - 5 * 60 * 1000;
+            // Initial reminder after 10 minutes
+            const initialThreshold = Date.now() - 10 * 60 * 1000;
             if (a.assignedAt > initialThreshold) return false;
 
-            // Subsequent reminders every 15 minutes
-            if (a.lastReminderSent && a.lastReminderSent > fifteenMinutesAgo) return false;
+            // Subsequent reminders every 2 hours
+            if (a.lastReminderSent && a.lastReminderSent > twoHoursAgo) return false;
 
             return true;
         });
@@ -34,6 +34,24 @@ export const checkUnacknowledgedAssignments = internalMutation({
             if (!worker) continue;
 
             const reminderCount = assignment.reminderCount || 0;
+
+            // Limit to 10 email reminders per staff member per day
+            const startOfDay = new Date().setHours(0, 0, 0, 0);
+            const dailyReminders = await ctx.db
+                .query("notifications")
+                .withIndex("by_userId", (q) => q.eq("userId", assignment.staffId!))
+                .filter((q) =>
+                    q.and(
+                        q.eq(q.field("type"), "reminder"),
+                        q.gte(q.field("_creationTime"), startOfDay)
+                    )
+                )
+                .collect();
+
+            if (dailyReminders.length >= 10) {
+                console.log(`[checkUnacknowledgedAssignments] Skipping reminder for user ${worker.email}: daily limit reached (${dailyReminders.length})`);
+                continue;
+            }
 
             // Send reminder to worker
             await ctx.runMutation(api.notifications.sendReminderNotification, {
