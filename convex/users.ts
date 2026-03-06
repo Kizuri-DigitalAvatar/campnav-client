@@ -47,6 +47,16 @@ export const upsert = mutation({
       ...updateData,
       points: 0,
     });
+
+    // Queue welcome email for new user
+    await ctx.db.insert("notifications", {
+      userId: _id,
+      type: "welcome",
+      channel: "email",
+      status: "pending",
+      message: `Welcome to CAMPNAV! Your account has been created.\n\nLogin Email: ${args.email}\nDefault Password: ${args.password || 'Not provided'}\n\nPlease login at ${process.env.NEXT_PUBLIC_APP_URL || 'https://campnav.vercel.app'}/login to access your dashboard.`,
+    });
+
     return (await ctx.db.get(_id))!;
   },
 });

@@ -48,10 +48,20 @@ export const processEmailNotifications = internalAction({
                     }
                 }
 
+                const subject = notif.type === 'welcome'
+                    ? "Welcome to CAMPNAV: Your Account Details"
+                    : `CAMPNAV: New ${notif.type === 'assignment' ? 'Service Request' : 'Notification'}`;
+
+                const title = notif.type === 'welcome'
+                    ? "Welcome to CAMPNAV"
+                    : (notif.type === 'assignment' ? "New Service Request" : "New Notification");
+
+                const formattedMessage = notif.message.replace(/\n/g, '<br/>');
+
                 const { data, error } = await resend.emails.send({
                     from: "CAMPNAV <notifications@blankspacesl.com>",
                     to: [notif.userEmail],
-                    subject: `CAMPNAV: New ${notif.type === 'assignment' ? 'Service Request' : 'Notification'}`,
+                    subject: subject,
                     html: `
                         <!DOCTYPE html>
                         <html>
@@ -72,13 +82,13 @@ export const processEmailNotifications = internalAction({
                                 <div class="header">
                                     <div class="logo">CAMPNAV</div>
                                 </div>
-                                <h1 class="title">New Service Request</h1>
-                                <p class="message">${notif.message}</p>
+                                <h1 class="title">${title}</h1>
+                                <p class="message">${formattedMessage}</p>
                                 
                                 ${requestInfo}
 
                                 <div style="margin-top: 32px;">
-                                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://campnav.vercel.app'}/assignments" class="button">View Task in Dashboard</a>
+                                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://campnav.vercel.app'}" class="button">Go to Dashboard</a>
                                 </div>
 
                                 <div class="footer">
