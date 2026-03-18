@@ -72,6 +72,12 @@ export default defineSchema({
       text: v.optional(v.string()),
       images: v.optional(v.array(v.string())), // Storage IDs
       audio: v.optional(v.string()), // Storage ID
+      replies: v.optional(v.array(v.object({
+        userId: v.id("users"),
+        userName: v.string(),
+        text: v.string(),
+        timestamp: v.number(),
+      }))),
     }))),
     lastReminderSent: v.optional(v.number()), // For escalation tracking
     reminderCount: v.optional(v.number()), // Number of reminders sent
@@ -133,8 +139,35 @@ export default defineSchema({
     image: v.optional(v.string()), // storageId
     dailyNotificationCount: v.optional(v.number()), // Max 4 per day
     lastDailyNotificationAt: v.optional(v.number()),
+    
+    // Maintenance specific
+    category: v.optional(v.string()),
+    subCategory: v.optional(v.string()),
+    applianceModel: v.optional(v.string()),
+    accessPreference: v.optional(v.string()),
+    officeUse: v.optional(v.object({
+      urgency: v.optional(v.string()),
+      tradesperson: v.optional(v.string()),
+      workOrderSent: v.optional(v.string()),
+    })),
+    
+    // Laundry specific
+    laundryItems: v.optional(v.array(v.object({
+      name: v.string(),
+      quantity: v.number(),
+      type: v.string(), // "laundry" | "dry_cleaning"
+    }))),
+    starch: v.optional(v.string()),
   }).index("by_userId", ["userId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_type", ["type"]),
+  menus: defineTable({
+    name: v.string(),
+    storageId: v.string(),
+    type: v.string(), // "image" | "pdf"
+    category: v.optional(v.string()), // e.g. "Food", "Drink"
+    uploadedAt: v.number(),
+  }),
   activities: defineTable({
     title: v.string(),
     description: v.string(),

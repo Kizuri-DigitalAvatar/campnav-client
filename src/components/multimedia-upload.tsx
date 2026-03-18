@@ -20,6 +20,7 @@ export function MultimediaUpload({
     const [images, setImages] = useState<File[]>([])
     const [isRecording, setIsRecording] = useState(false)
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
     const mediaRecorderRef = useRef<MediaRecorder | null>(null)
     const audioChunksRef = useRef<Blob[]>([])
 
@@ -65,6 +66,10 @@ export function MultimediaUpload({
     }
 
     const handleSubmit = async () => {
+        if (isSubmitting) return
+
+        setIsSubmitting(true)
+
         try {
             const imageStorageIds: string[] = []
             let audioStorageId: string | undefined
@@ -105,6 +110,8 @@ export function MultimediaUpload({
         } catch (error) {
             console.error("Error uploading update:", error)
             alert("Failed to upload update")
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -115,6 +122,7 @@ export function MultimediaUpload({
                     <h2 className="text-2xl font-bold">Add Update</h2>
                     <button
                         onClick={onCancel}
+                        disabled={isSubmitting}
                         className="p-2 hover:bg-muted rounded-xl transition-colors"
                     >
                         <X className="w-5 h-5" />
@@ -129,6 +137,7 @@ export function MultimediaUpload({
                         <textarea
                             value={text}
                             onChange={(e) => setText(e.target.value)}
+                            disabled={isSubmitting}
                             placeholder="Add notes about your progress..."
                             className="w-full h-24 rounded-xl border bg-muted/50 px-4 py-3 text-sm focus:bg-background focus:ring-2 focus:ring-primary/20 transition-all outline-none resize-none"
                         />
@@ -144,6 +153,7 @@ export function MultimediaUpload({
                                 accept="image/*"
                                 multiple
                                 onChange={handleImageSelect}
+                                disabled={isSubmitting}
                                 className="hidden"
                             />
                             <ImageIcon className="w-6 h-6 text-muted-foreground" />
@@ -163,6 +173,7 @@ export function MultimediaUpload({
                             {!isRecording && !audioBlob && (
                                 <button
                                     onClick={startRecording}
+                                    disabled={isSubmitting}
                                     className="flex-1 flex items-center justify-center gap-2 h-12 bg-muted border rounded-xl hover:bg-muted/80 transition-colors"
                                 >
                                     <Mic className="w-5 h-5" />
@@ -172,6 +183,7 @@ export function MultimediaUpload({
                             {isRecording && (
                                 <button
                                     onClick={stopRecording}
+                                    disabled={isSubmitting}
                                     className="flex-1 flex items-center justify-center gap-2 h-12 bg-destructive text-destructive-foreground rounded-xl animate-pulse"
                                 >
                                     <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
@@ -186,6 +198,7 @@ export function MultimediaUpload({
                                     </div>
                                     <button
                                         onClick={() => setAudioBlob(null)}
+                                        disabled={isSubmitting}
                                         className="p-1 hover:bg-destructive/10 rounded-lg transition-colors"
                                     >
                                         <X className="w-4 h-4 text-destructive" />
@@ -199,16 +212,24 @@ export function MultimediaUpload({
                 <div className="flex gap-3 pt-4">
                     <button
                         onClick={onCancel}
+                        disabled={isSubmitting}
                         className="flex-1 h-11 px-6 rounded-xl border bg-muted text-foreground font-black text-xs uppercase tracking-widest hover:bg-muted/80 transition-all"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
-                        disabled={!text && images.length === 0 && !audioBlob}
+                        disabled={isSubmitting || (!text && images.length === 0 && !audioBlob)}
                         className="flex-1 h-11 px-6 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Submit Update
+                        {isSubmitting ? (
+                            <span className="inline-flex items-center gap-2">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>Submitting...</span>
+                            </span>
+                        ) : (
+                            "Submit Update"
+                        )}
                     </button>
                 </div>
             </div>

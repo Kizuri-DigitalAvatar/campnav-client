@@ -11,16 +11,25 @@ import { Card } from "@/components/ui/card"
 import { useAuth } from "@/components/auth-provider"
 import { api } from "../../../../convex/_generated/api"
 
-const PRIORITIES = ["Urgent", "Important", "Low Priority"] as const
+const CATEGORIES = ["Plumbing", "Electrical", "General Repairs", "Other"] as const
+type Category = (typeof CATEGORIES)[number]
 
-type Priority = (typeof PRIORITIES)[number]
+const SUB_CATEGORIES: Record<Category, string[]> = {
+  Plumbing: ["Taps/Faucets", "Toilet", "Pipes/Leaks", "Hot Water", "Other"],
+  Electrical: ["Light Bulbs", "Sockets & Switches", "Appliances", "Wiring Fault", "Other"],
+  "General Repairs": ["Doors/Locks", "Windows", "Furniture", "Walls/Ceiling", "Other"],
+  Other: ["Other (please specify)"],
+}
 
 export default function MaintenanceRequestPage() {
   const router = useRouter()
   const { user } = useAuth()
-  const [priority, setPriority] = useState<Priority>("Urgent")
+  const [category, setCategory] = useState<Category>("Plumbing")
+  const [subCategory, setSubCategory] = useState("")
   const [roomNumber, setRoomNumber] = useState("")
   const [description, setDescription] = useState("")
+  const [applianceModel, setApplianceModel] = useState("")
+  const [accessPreference, setAccessPreference] = useState<"allow_entry" | "must_be_present">("allow_entry")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -39,7 +48,7 @@ export default function MaintenanceRequestPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!user || !roomNumber.trim() || !description.trim()) return
+    if (!user || !roomNumber.trim() || !description.trim() || !category) return
 
     setIsSubmitting(true)
     let storageId = undefined
@@ -61,7 +70,11 @@ export default function MaintenanceRequestPage() {
         type: "maintenance",
         roomNumber: roomNumber.trim(),
         description: description.trim(),
-        priority: priority.toLowerCase(),
+        priority: "pending_review", // Admin will set this
+        category,
+        subCategory,
+        applianceModel: applianceModel.trim(),
+        accessPreference,
         image: storageId,
       })
 
@@ -75,7 +88,7 @@ export default function MaintenanceRequestPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 pb-4">
+    <form onSubmit={handleSubmit} className="space-y-6 pb-4 md:max-w-xl md:mx-auto">
       <header className="space-y-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Link href="/maintenance" className="inline-flex items-center gap-1">
@@ -105,21 +118,24 @@ export default function MaintenanceRequestPage() {
           />
         </div>
 
-        <div className="space-y-1 text-xs">
-          <p className="text-[11px] font-medium text-muted-foreground">Priority</p>
-          <div className="flex flex-wrap gap-2">
-            {PRIORITIES.map((value) => {
-              const selected = value === priority
+        <div className="space-y-2 text-xs">
+          <p className="text-[11px] font-medium text-muted-foreground">Category</p>
+          <div className="grid grid-cols-2 gap-2">
+            {CATEGORIES.map((value) => {
+              const selected = value === category
               return (
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setPriority(value)}
+                  onClick={() => {
+                    setCategory(value)
+                    setSubCategory("") // Reset sub-category on change
+                  }}
                   className={
-                    "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors " +
+                    "rounded-xl border px-3 py-2 text-[11px] font-medium transition-colors text-center " +
                     (selected
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground")
+                      ? "border-primary bg-primary/10 text-primary shadow-sm"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted/50")
                   }
                 >
                   {value}
@@ -129,20 +145,94 @@ export default function MaintenanceRequestPage() {
           </div>
         </div>
 
+        {category && (
+          <div className="space-y-1 text-xs animate-in fade-in slide-in-from-top-2 duration-200">
+            <label className="block text-[11px] font-medium text-muted-foreground">
+              What specifically is the issue?
+            </label>
+            <select
+              className="h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
+              value={subCategory}
+              onChange={(e) => setSubCategory(e.target.value)}
+              required
+            >
+              <option value="" disabled>Select a sub-category...</option>
+              {SUB_CATEGORIES[category].map((sub) => (
+                <option key={sub} value={sub}>{sub}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {category === "Electrical" && (
+           <div className="space-y-1 text-xs animate-in fade-in slide-in-from-top-2 duration-200">
+           <label className="block text-[11px] font-medium text-muted-foreground">
+             Model of Appliance (if applicable)
+           </label>
+           <Input
+             placeholder="e.g. LG Fridge AR-200"
+             className="h-10 rounded-xl"
+             value={applianceModel}
+             onChange={(e) => setApplianceModel(e.target.value)}
+           />
+         </div>
+        )}
+
         <div className="space-y-1 text-xs">
           <label className="block text-[11px] font-medium text-muted-foreground">
-            Describe the issue
+            Instruction / Comments
           </label>
           <textarea
             rows={4}
             className="min-h-[96px] w-full rounded-xl border border-input bg-background px-3 py-2 text-xs outline-none ring-ring/50 focus-visible:border-ring focus-visible:ring-[3px]"
-            placeholder="Enter details..."
+            placeholder="Tell us more about the issue..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            required
           />
         </div>
 
-        <div className="space-y-2 text-xs">
+        <div className="space-y-2 text-xs border-t pt-4">
+          <p className="text-[11px] font-medium text-muted-foreground">Access to Property</p>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setAccessPreference("allow_entry")}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                accessPreference === "allow_entry" 
+                  ? "border-primary bg-primary/10 ring-1 ring-primary" 
+                  : "border-border bg-background hover:bg-muted/30"
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${accessPreference === "allow_entry" ? "border-primary bg-primary" : "border-muted-foreground"}`}>
+                {accessPreference === "allow_entry" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-xs text-foreground">Entry Permitted</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">The tradesperson can collect keys and attend without me being present</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccessPreference("must_be_present")}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                accessPreference === "must_be_present" 
+                  ? "border-primary bg-primary/10 ring-1 ring-primary" 
+                  : "border-border bg-background hover:bg-muted/30"
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${accessPreference === "must_be_present" ? "border-primary bg-primary" : "border-muted-foreground"}`}>
+                {accessPreference === "must_be_present" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-xs text-foreground">Must Be Present</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">I wish to be present when the tradesperson attends the property</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2 text-xs border-t pt-4">
           <p className="text-[11px] font-medium text-muted-foreground">
             Upload a photo (optional)
           </p>
@@ -172,7 +262,7 @@ export default function MaintenanceRequestPage() {
       <button
         type="submit"
         disabled={isSubmitting || !user}
-        className="flex w-full items-center justify-center rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50"
+        className="flex w-full items-center justify-center rounded-full bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50 active:scale-[0.98] transition-all"
       >
         {isSubmitting ? "Submitting..." : "Submit Request"}
       </button>

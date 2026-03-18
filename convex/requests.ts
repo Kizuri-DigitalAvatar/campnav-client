@@ -10,6 +10,18 @@ export const create = mutation({
         description: v.string(),
         priority: v.string(),
         image: v.optional(v.string()),
+        
+        // New fields
+        category: v.optional(v.string()),
+        subCategory: v.optional(v.string()),
+        applianceModel: v.optional(v.string()),
+        accessPreference: v.optional(v.string()),
+        laundryItems: v.optional(v.array(v.object({
+            name: v.string(),
+            quantity: v.number(),
+            type: v.string(),
+        }))),
+        starch: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
@@ -82,7 +94,7 @@ export const create = mutation({
             assignmentId: taskId,
             requestId,
             type: "assignment",
-            message: `New ${displayType} Request: ${args.roomNumber} - ${args.description}`,
+            message: `New ${displayType} Request: ${args.roomNumber} - ${args.category ? `[${args.category}${args.subCategory ? ` / ${args.subCategory}` : ""}] ` : ""}${args.description}`,
         });
 
         // Trigger email processing immediately (don't wait for cron)
