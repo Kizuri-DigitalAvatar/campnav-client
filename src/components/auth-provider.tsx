@@ -19,6 +19,7 @@ export type AuthUser = {
   image?: string
   points?: number
   role?: string
+  roomNumber?: string
 }
 
 type AuthContextValue = {
@@ -73,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           image: dbUser.imageUrl || undefined,
           points: dbUser.points || 0,
           role: dbUser.role,
+          roomNumber: dbUser.roomNumber,
         }
         setUser(mapped)
         if (typeof window !== "undefined") {

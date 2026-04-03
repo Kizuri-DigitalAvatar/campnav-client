@@ -1,16 +1,20 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { useParams, useRouter } from "next/navigation"
 import { api } from "../../../../../convex/_generated/api"
 import { Id } from "../../../../../convex/_generated/dataModel"
 import { ArrowLeft, Clock, MapPin, Calendar, Users, Info } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/components/auth-provider"
+import { toast } from "sonner"
 
 export default function ActivityDetailPage() {
     const { id } = useParams<{ id: string }>()
     const router = useRouter()
-    const activity = useQuery(api.activities.get, { id: id as Id<"activities"> })
+    const { user } = useAuth()
+    const activity = useQuery(api.activities.get, { id: id as Id<"activities">, userId: user?._id as any })
+    const toggleInterest = useMutation(api.activities.toggleInterest)
 
     if (activity === undefined) {
         return (
@@ -41,14 +45,14 @@ export default function ActivityDetailPage() {
                     Back to Board
                 </button>
 
-                <div className={`w-full h-48 rounded-3xl flex flex-col items-center justify-center text-white relative overflow-hidden shadow-xl shadow-primary/5 ${activity.category === 'Social' ? 'bg-blue-600' :
-                    activity.category === 'Outdoor' ? 'bg-emerald-600' :
-                        activity.category === 'Workshop' ? 'bg-amber-600' : 'bg-primary'
-                    }`}>
+                <div className="w-full h-48 rounded-3xl flex flex-col items-center justify-center text-white relative overflow-hidden shadow-xl shadow-primary/5 bg-primary">
+                    {activity.coverImageUrl && (
+                        <img src={activity.coverImageUrl} alt={activity.title} className="absolute inset-0 w-full h-full object-cover opacity-80" />
+                    )}
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <Calendar size={120} />
                     </div>
-                    <div className="relative z-10 text-center space-y-2">
+                    <div className="relative z-10 text-center space-y-2 drop-shadow">
                         <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-80">{activity.category}</span>
                         <h1 className="text-3xl font-black tracking-tighter uppercase">{activity.title}</h1>
                     </div>
@@ -114,8 +118,29 @@ export default function ActivityDetailPage() {
                 </div>
             )}
 
-            <button className="w-full h-14 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-[0.98]">
-                Interested
+            <button
+                disabled={!user}
+                onClick={async () => {
+                    if (!user) {
+                        toast("Please log in to mark interest.")
+                        return
+                    }
+                    try {
+                        const res = await toggleInterest({ activityId: id as Id<"activities">, userId: user._id as any })
+                        toast(res.interested ? "Marked as interested" : "Interest removed")
+                    } catch (err) {
+                        console.error(err)
+                        toast.error("Failed to update interest")
+                    }
+                }}
+                className={`w-full h-14 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-primary/20 transition-all active:scale-[0.98] ${
+                    activity.isInterested ? "bg-foreground text-background" : "bg-primary text-primary-foreground"
+                } ${!user ? "opacity-50 cursor-not-allowed" : "hover:opacity-90"}`}
+            >
+                {activity.isInterested ? "Interested ✓" : "Interested"}
+                {typeof activity.interestedCount === "number" && (
+                    <span className="ml-2 text-[11px] font-semibold opacity-80">({activity.interestedCount})</span>
+                )}
             </button>
         </div>
     )

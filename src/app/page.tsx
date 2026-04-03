@@ -71,6 +71,9 @@ export default function Home() {
   const announcementsList = announcements || []
   const activitiesList = activities || []
   const latestAnnouncement = announcementsList[0]
+  const recentAnnouncements = [...announcementsList]
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .slice(0, 3)
 
   const formatDay = (timestamp: number) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -98,76 +101,52 @@ export default function Home() {
 
 
       {/* Announcements */}
-      <section className="mt-4 space-y-4">
+      <section className="mt-2 space-y-4">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-lg font-bold tracking-tight">Announcements</h2>
           <Link href="/updates" className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors">View All</Link>
         </div>
 
-        {/* Recent Requests for Camper */}
-        {user && user.role === "camper" && userRequests && userRequests.length > 0 && (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-lg font-black tracking-tight uppercase text-primary/80">Active Requests</h2>
-              <Link href="/requests" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-                Manage All ({userRequests.length})
-              </Link>
-            </div>
-            <div className="space-y-4">
-              {userRequests
-                .sort((a: any, b: any) => {
-                  // Active status first (pending, in_progress)
-                  const activeStatuses = ["pending", "in_progress"];
-                  const aActive = activeStatuses.includes(a.status);
-                  const bActive = activeStatuses.includes(b.status);
-                  if (aActive && !bActive) return -1;
-                  if (!aActive && bActive) return 1;
-                  // Then most recent
-                  return b.createdAt - a.createdAt;
-                })
-                .slice(0, 3)
-                .map((req: any) => (
-                  <RequestCard key={req._id} request={req} />
-                ))}
-            </div>
-          </section>
-        )}
-
         <div className="space-y-4">
-          {announcements.length > 0 ? (
-            announcements.slice(0, 3).map((announcement) => (
-              <div key={announcement._id} className="group relative overflow-hidden rounded-3xl bg-card border shadow-sm transition-all hover:shadow-md">
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="space-y-1.5 var(--font-sans)">
-                      <div className="flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${announcement.priority === 'High' ? 'bg-red-500 shadow-red-500/50 shadow-[0_0_8px]' :
-                          announcement.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                          }`} />
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          {announcement.priority} PRIORITY
-                        </p>
+          {recentAnnouncements.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-1 px-1">
+              {recentAnnouncements.map((announcement) => (
+                <div
+                  key={announcement._id}
+                  className="group relative min-w-[240px] max-w-[320px] flex-1 overflow-hidden rounded-3xl bg-card border shadow-sm transition-all hover:shadow-md"
+                >
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="space-y-1.5 var(--font-sans)">
+                        <div className="flex items-center gap-2">
+                          <span className={`h-2 w-2 rounded-full ${announcement.priority === 'High' ? 'bg-red-500 shadow-red-500/50 shadow-[0_0_8px]' :
+                            announcement.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                            }`} />
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            {announcement.priority} PRIORITY
+                          </p>
+                        </div>
+                        <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors pr-8 line-clamp-2">
+                          {announcement.title}
+                        </h3>
                       </div>
-                      <h3 className="text-base font-semibold leading-snug group-hover:text-primary transition-colors pr-8">
-                        {announcement.title}
-                      </h3>
+                      <div className="shrink-0 p-2 bg-muted/50 rounded-full">
+                        <Megaphone size={16} className="text-foreground/70" />
+                      </div>
                     </div>
-                    <div className="shrink-0 p-2 bg-muted/50 rounded-full">
-                      <Megaphone size={16} className="text-foreground/70" />
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between mt-2 pt-3 border-t border-border/50">
-                    <p className="text-[11px] font-medium text-muted-foreground">
-                      {new Date(announcement.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </p>
-                    <Link href={`/updates/announcements/${announcement._id}`} className="text-[11px] font-semibold text-primary flex items-center gap-1 hover:underline">
-                      Read details
-                    </Link>
+                    <div className="flex items-center justify-between mt-2 pt-3 border-t border-border/50">
+                      <p className="text-[11px] font-medium text-muted-foreground">
+                        {new Date(announcement.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </p>
+                      <Link href={`/updates/announcements/${announcement._id}`} className="text-[11px] font-semibold text-primary flex items-center gap-1 hover:underline">
+                        Read details
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
             <div className="p-8 text-center text-muted-foreground italic text-sm border rounded-3xl bg-muted/20 border-dashed">
               No active announcements at this time.
@@ -175,6 +154,33 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* Recent Requests for Camper */}
+      {user && user.role === "camper" && userRequests && userRequests.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-lg font-black tracking-tight uppercase text-primary/80">Active Requests</h2>
+            <Link href="/requests" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
+              Manage All ({userRequests.length})
+            </Link>
+          </div>
+          <div className="space-y-4">
+            {userRequests
+              .sort((a: any, b: any) => {
+                const activeStatuses = ["pending", "in_progress"];
+                const aActive = activeStatuses.includes(a.status);
+                const bActive = activeStatuses.includes(b.status);
+                if (aActive && !bActive) return -1;
+                if (!aActive && bActive) return 1;
+                return b.createdAt - a.createdAt;
+              })
+              .slice(0, 3)
+              .map((req: any) => (
+                <RequestCard key={req._id} request={req} />
+              ))}
+          </div>
+        </section>
+      )}
 
       {/* This week schedule */}
       <section className="mt-2 space-y-3">
@@ -220,4 +226,3 @@ export default function Home() {
     </div>
   )
 }
-

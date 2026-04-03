@@ -7,7 +7,7 @@ import { useAuth } from "@/components/auth-provider"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { User, Mail, Camera, Save, X, Edit2 } from "lucide-react"
+import { User, Mail, Camera, Save, X, Edit2, Home } from "lucide-react"
 
 export default function SettingsPage() {
     const { user, setUser } = useAuth()
@@ -17,6 +17,7 @@ export default function SettingsPage() {
     const [isEditing, setIsEditing] = useState(false)
     const [name, setName] = useState(user?.name || "")
     const [email, setEmail] = useState(user?.email || "")
+    const [roomNumber, setRoomNumber] = useState(user?.roomNumber || "")
     const [uploading, setUploading] = useState(false)
     const [saving, setSaving] = useState(false)
 
@@ -43,6 +44,7 @@ export default function SettingsPage() {
                 name: user.name,
                 email: user.email,
                 image: storageId,
+                roomNumber: user.roomNumber,
             })
 
             // Fetch the image URL from Convex
@@ -71,9 +73,10 @@ export default function SettingsPage() {
                 name,
                 email,
                 image: user.image,
+                roomNumber,
             })
 
-            setUser({ ...user, name, email })
+            setUser({ ...user, name, email, roomNumber })
             setIsEditing(false)
             alert("Profile updated successfully!")
         } catch (error: any) {
@@ -92,6 +95,7 @@ export default function SettingsPage() {
     const handleCancel = () => {
         setName(user.name)
         setEmail(user.email)
+        setRoomNumber(user.roomNumber || "")
         setIsEditing(false)
     }
 
@@ -164,11 +168,30 @@ export default function SettingsPage() {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="Enter your name"
-                                    className="rounded-xl"
+                                    className="rounded-xl border-2"
                                 />
                             ) : (
                                 <p className="text-base font-semibold px-3 py-2 bg-muted/30 rounded-xl">
                                     {user.name}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                                <Home size={14} />
+                                Room / Cabin Number
+                            </label>
+                            {isEditing ? (
+                                <Input
+                                    value={roomNumber}
+                                    onChange={(e) => setRoomNumber(e.target.value)}
+                                    placeholder="e.g. Cabin 204"
+                                    className="rounded-xl border-2"
+                                />
+                            ) : (
+                                <p className={`text-base font-semibold px-3 py-2 bg-muted/30 rounded-xl ${!user.roomNumber && 'text-muted-foreground italic'}`}>
+                                    {user.roomNumber || "Not set - specify in order or here"}
                                 </p>
                             )}
                         </div>

@@ -30,6 +30,7 @@ export default defineSchema({
     isOnSite: v.optional(v.boolean()), // For camp-staff
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
+    roomNumber: v.optional(v.string()), // For campers
   })
     .index("by_role", ["role"])
     .index("by_email", ["email"]),
@@ -40,10 +41,17 @@ export default defineSchema({
     /** Free-form summary of what was ordered */
     summary: v.string(),
     total: v.number(),
-    status: v.string(), // e.g. "pending", "in_progress", "completed"
+    status: v.string(), // e.g. "pending", "in_progress", "completed", "failed"
+    roomNumber: v.optional(v.string()),
     createdAt: v.number(), // timestamp (Date.now())
+    confirmedAt: v.optional(v.number()),
+    confirmationNote: v.optional(v.string()),
+    confirmationEvidence: v.optional(v.array(v.string())), // storageIds for proof of delivery
+    quantity: v.optional(v.number()),
+    productImage: v.optional(v.string()),
   }).index("by_status", ["status"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_source", ["source"]),
   announcements: defineTable({
     title: v.string(),
     content: v.string(),
@@ -163,8 +171,10 @@ export default defineSchema({
     .index("by_type", ["type"]),
   menus: defineTable({
     name: v.string(),
-    storageId: v.string(),
-    type: v.string(), // "image" | "pdf"
+    storageId: v.optional(v.string()),
+    content: v.optional(v.string()),
+    type: v.string(), // "image" | "pdf" | "text"
+    schedule: v.optional(v.string()), // "daily" | "weekly"
     category: v.optional(v.string()), // e.g. "Food", "Drink"
     uploadedAt: v.number(),
   }),
@@ -176,5 +186,14 @@ export default defineSchema({
     location: v.string(),
     category: v.optional(v.string()), // e.g. "Social", "Workshop", "Outdoor"
     capacity: v.optional(v.number()),
+    coverImage: v.optional(v.string()),
+    interestedCount: v.optional(v.number()),
   }).index("by_date", ["date"]),
+  activityInterests: defineTable({
+    activityId: v.id("activities"),
+    userId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_activityId", ["activityId"])
+    .index("by_activity_user", ["activityId", "userId"]),
 });

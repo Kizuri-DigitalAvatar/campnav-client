@@ -166,7 +166,7 @@ export const verifyUser = query({
       }
     }
 
-    return { ...user, imageUrl };
+    return { ...user, imageUrl, roomNumber: user.roomNumber };
   },
 });
 
@@ -176,6 +176,7 @@ export const updateProfile = mutation({
     name: v.string(),
     email: v.string(),
     image: v.optional(v.string()),
+    roomNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { userId, ...updates } = args;
@@ -190,6 +191,7 @@ export const updateProfile = mutation({
       name: updates.name,
       email: updates.email,
       ...(updates.image !== undefined && { image: updates.image }),
+      ...(updates.roomNumber !== undefined && { roomNumber: updates.roomNumber }),
     });
 
     return await ctx.db.get(userId);

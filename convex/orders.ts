@@ -1,24 +1,39 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
 
 export const list = query({
   args: {
     status: v.optional(v.string()),
+    source: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const baseQuery = args.status && args.status !== "all"
-      ? ctx.db.query("orders").withIndex("by_status", (q) => q.eq("status", args.status!))
-      : ctx.db.query("orders");
+    let baseQuery: any;
+    
+    if (args.source && args.source !== "all") {
+      baseQuery = ctx.db.query("orders")
+        .withIndex("by_source", (q) => q.eq("source", args.source!));
+    } else if (args.status && args.status !== "all") {
+      baseQuery = ctx.db.query("orders")
+        .withIndex("by_status", (q) => q.eq("status", args.status!));
+    } else {
+      baseQuery = ctx.db.query("orders");
+    }
 
-    const orders = await baseQuery.order("desc").collect();
+    let orders = await baseQuery.order("desc").collect();
+
+    if (args.source && args.source !== "all" && args.status && args.status !== "all") {
+      orders = orders.filter((o: any) => o.status === args.status);
+    }
+    // If we only filtered by status via index, or only by source via index, or no filters, 
+    // the index already handled it. 
+    // The only case where we need manual filtering is when BOTH source and status are provided.
 
     const results = await Promise.all(
-      orders.map(async (o) => {
+      orders.map(async (o: any) => {
         let userName = "Deleted User";
         if (o.userId) {
           try {
-            const user = await ctx.db.get(o.userId);
+            const user: any = await ctx.db.get(o.userId);
             if (user) {
               userName = user.name;
             }
@@ -26,7 +41,32 @@ export const list = query({
             console.error("Failed to fetch user for order", o._id, o.userId, e);
           }
         }
-        return { ...o, userName };
+
+        // Resolve product image if we have a storageId or missing url
+        let productImage = o.productImage;
+        if (productImage && !productImage.startsWith("http")) {
+          try {
+            productImage = await ctx.storage.getUrl(productImage);
+          } catch (e) {
+            console.error("Failed to resolve product image", productImage, e);
+          }
+        }
+        if (!productImage && o.source === "shop") {
+          // Fallback: look up product by name
+          const productList = await ctx.db.query("products").collect();
+          const product = productList.find(p => p.name === o.summary);
+          if (product?.image) {
+            try {
+              productImage = product.image.startsWith("http")
+                ? product.image
+                : await ctx.storage.getUrl(product.image);
+            } catch (e) {
+              console.error("Failed to resolve fallback product image", product.image, e);
+            }
+          }
+        }
+
+        return { ...o, userName, productImage };
       })
     );
 
@@ -40,6 +80,9 @@ export const create = mutation({
     source: v.string(),
     summary: v.string(),
     total: v.number(),
+    roomNumber: v.optional(v.string()),
+    quantity: v.optional(v.number()),
+    productImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -48,7 +91,10 @@ export const create = mutation({
       source: args.source,
       summary: args.summary,
       total: args.total,
+      roomNumber: args.roomNumber,
       status: "pending",
+      quantity: args.quantity ?? 1,
+      productImage: args.productImage,
       createdAt: now,
     });
     return await ctx.db.get(_id);
@@ -66,6 +112,54 @@ export const updateStatus = mutation({
   },
 });
 
+export const confirmReceipt = mutation({
+  args: {
+    orderId: v.id("orders"),
+    userId: v.id("users"),
+    note: v.optional(v.string()),
+    evidence: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.userId !== args.userId) {
+      throw new Error("You can only verify your own orders");
+    }
+
+    const update: any = {
+      status: order.status === "failed" ? "failed" : "completed",
+      confirmedAt: Date.now(),
+      confirmationNote: args.note,
+      confirmationEvidence: args.evidence,
+    };
+
+    await ctx.db.patch(args.orderId, update);
+    return await ctx.db.get(args.orderId);
+  },
+});
+
+export const incrementShopOrder = mutation({
+  args: {
+    orderId: v.id("orders"),
+    amount: v.number(),
+    unitPrice: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+    const currentQty = order.quantity ?? 1;
+    const newQty = currentQty + args.amount;
+    const newTotal = order.total + args.unitPrice * args.amount;
+    await ctx.db.patch(args.orderId, { quantity: newQty, total: newTotal });
+    return await ctx.db.get(args.orderId);
+  },
+});
+
 export const deleteOrder = mutation({
   args: { id: v.id("orders") },
   handler: async (ctx, args) => {
@@ -75,10 +169,35 @@ export const deleteOrder = mutation({
 export const listForUser = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const orders = await ctx.db
       .query("orders")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .order("desc")
       .collect();
+
+    return Promise.all(orders.map(async (o: any) => {
+      let productImage = o.productImage;
+      if (productImage && !productImage.startsWith("http")) {
+        try {
+          productImage = await ctx.storage.getUrl(productImage);
+        } catch (e) {
+          console.error("Failed to resolve product image", productImage, e);
+        }
+      }
+      if (!productImage && o.source === "shop") {
+        const productList = await ctx.db.query("products").collect();
+        const product = productList.find(p => p.name === o.summary);
+        if (product?.image) {
+          try {
+            productImage = product.image.startsWith("http")
+              ? product.image
+              : await ctx.storage.getUrl(product.image);
+          } catch (e) {
+            console.error("Failed to resolve fallback product image", product.image, e);
+          }
+        }
+      }
+      return { ...o, productImage };
+    }));
   },
 });

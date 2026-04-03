@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { api } from "./_generated/api";
 
 export const create = mutation({
     args: {
@@ -9,6 +10,7 @@ export const create = mutation({
         author: v.string(),
         priority: v.string(),
         coverImage: v.optional(v.string()),
+        broadcast: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
         const id = await ctx.db.insert("announcements", {
@@ -19,6 +21,21 @@ export const create = mutation({
             coverImage: args.coverImage,
             createdAt: Date.now(),
         });
+        if (args.broadcast) {
+            const message = `📢 ${args.priority.toUpperCase()} UPDATE: ${args.title}\n\n${args.content.substring(0, 120)}${args.content.length > 120 ? "..." : ""}`;
+            await Promise.all([
+                ctx.runMutation(api.notifications.sendRoleNotification, {
+                    role: "camper",
+                    type: "announcement",
+                    message,
+                }),
+                ctx.runMutation(api.notifications.sendRoleNotification, {
+                    role: "camp-staff",
+                    type: "announcement",
+                    message,
+                }),
+            ]);
+        }
         return id;
     },
 });

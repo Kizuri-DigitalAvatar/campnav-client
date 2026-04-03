@@ -1,18 +1,27 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Search, User, Menu, X, Home, Grid2X2, Bell, ChevronDown, Shirt, Utensils, ShoppingBag, Wrench, Brush, Truck, ClipboardList } from "lucide-react"
+import { Search, User, Menu, X, Home, Grid2X2, Bell, ChevronDown, Shirt, Utensils, ShoppingBag, Wrench, Brush, Truck, ClipboardList, ShoppingCart } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
 import { cn } from "@/lib/utils"
+import { useQuery } from "convex/react"
+import { api } from "../../convex/_generated/api"
 
 export function Header() {
     const { user } = useAuth()
+    const userOrders = useQuery(api.orders.listForUser, user ? { userId: user._id } : "skip")
+    const cartCount = useMemo(() => {
+        if (!userOrders) return 0
+        return userOrders
+            .filter((o: any) => o.source === "shop" && (o.status === "pending" || o.status === "in_progress"))
+            .reduce((sum: number, o: any) => sum + (o.quantity ?? 1), 0)
+    }, [userOrders])
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
@@ -118,6 +127,19 @@ export function Header() {
                     {/* Right: Burger Menu + Profile */}
                     <div className="flex items-center gap-2">
                         {/* Burger Menu Button (Mobile Only) */}
+                        <Link
+                            href="/history"
+                            className="relative md:hidden h-10 w-10 rounded-full border bg-card flex items-center justify-center hover:border-primary/60 hover:text-primary transition-colors active:scale-95"
+                            aria-label="My orders"
+                            title="My orders"
+                        >
+                            <ShoppingCart className="h-5 w-5" />
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </Link>
                         <Button
                             variant="ghost"
                             size="icon"

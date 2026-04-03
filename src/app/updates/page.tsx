@@ -132,6 +132,15 @@ export default function UpdatesPage() {
                           <h3 className="text-base font-bold leading-tight mt-0.5">{activity.title}</h3>
                         </div>
                       </div>
+                      {activity.coverImageUrl && (
+                        <div className="mb-3 overflow-hidden rounded-xl border border-border/60 bg-muted">
+                          <img
+                            src={activity.coverImageUrl}
+                            alt={activity.title}
+                            className="w-full h-36 object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                          />
+                        </div>
+                      )}
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-4 pl-2 font-medium leading-relaxed">
                         {activity.description}
                       </p>
