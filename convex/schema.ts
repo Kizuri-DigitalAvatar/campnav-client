@@ -65,6 +65,13 @@ export default defineSchema({
     requestId: v.optional(v.id("requests")),
     roomNumber: v.string(),
     serviceType: v.string(), // e.g. "housekeeping", "maintenance", "laundry"
+    description: v.optional(v.string()),
+    priority: v.optional(v.string()),
+    category: v.optional(v.string()),
+    subCategory: v.optional(v.string()),
+    applianceModel: v.optional(v.string()),
+    accessPreference: v.optional(v.string()),
+    image: v.optional(v.string()),
     status: v.string(), // "pending", "confirmed", "in_progress", "completed", "rated"
     viewedBy: v.optional(v.array(v.id("users"))), // Track which staff members have viewed this task
     assignedAt: v.number(),
