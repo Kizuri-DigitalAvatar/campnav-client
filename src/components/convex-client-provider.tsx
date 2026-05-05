@@ -10,6 +10,11 @@ export default function ConvexClientProvider({
 }: {
   children: ReactNode;
 }) {
+  const convex = useMemo(() => {
+    if (!convexUrl) return null;
+    return new ConvexReactClient(convexUrl);
+  }, []);
+
   if (!convexUrl) {
     if (typeof window !== "undefined") {
       console.warn(
@@ -19,7 +24,5 @@ export default function ConvexClientProvider({
     return <>{children}</>;
   }
 
-  const convex = useMemo(() => new ConvexReactClient(convexUrl), []);
-
-  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
+  return <ConvexProvider client={convex!}>{children}</ConvexProvider>;
 }
