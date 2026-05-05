@@ -4,7 +4,7 @@ import { v } from "convex/values";
 export const list = query({
     args: { category: v.optional(v.string()) },
     handler: async (ctx, args) => {
-        let menusQuery = ctx.db.query("menus");
+        const menusQuery = ctx.db.query("menus");
         const menus = await menusQuery.order("desc").collect();
 
         const results = await Promise.all(

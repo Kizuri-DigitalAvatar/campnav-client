@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Card } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { List, Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRigh
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 
-export default function UpdatesPage() {
+function UpdatesPageContent() {
   const searchParams = useSearchParams()
   const announcements = useQuery(api.announcements.list, { priority: "all" }) ?? []
   const activities = useQuery(api.activities.list) ?? []
@@ -170,6 +170,14 @@ export default function UpdatesPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function UpdatesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+      <UpdatesPageContent />
+    </Suspense>
   )
 }
 

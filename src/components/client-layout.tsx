@@ -1,15 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { AuthGuard } from "@/components/auth-guard"
 import { NotificationListener } from "@/components/notification-listener"
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
-    const [mounted, setMounted] = useState(false)
-
-    useEffect(() => {
-        setMounted(true)
-    }, [])
+    const [mounted, setMounted] = useState(true)
 
     if (!mounted) {
         return null // or a loading spinner
