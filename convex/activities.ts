@@ -156,3 +156,37 @@ export const toggleInterest = mutation({
         return { interested: true, interestedCount: count };
     },
 });
+
+export const listMyActivities = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const interests = await ctx.db
+            .query("activityInterests")
+            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+            .collect();
+
+        const activityIds = interests.map((i) => i.activityId);
+        const activities = await Promise.all(
+            activityIds.map((id) => ctx.db.get(id))
+        );
+
+        return activities.filter((a): a is NonNullable<typeof a> => a !== null);
+    },
+});
+
+export const getRecommended = query({
+    args: {},
+    handler: async (ctx) => {
+        const now = Date.now();
+        const upcoming = await ctx.db
+            .query("activities")
+            .withIndex("by_date", (q) => q.gt("date", now))
+            .order("asc")
+            .take(10);
+
+        // Sort by interestedCount descending and take top 3
+        return upcoming
+            .sort((a, b) => (b.interestedCount || 0) - (a.interestedCount || 0))
+            .slice(0, 3);
+    },
+});

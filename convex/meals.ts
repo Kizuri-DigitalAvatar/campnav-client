@@ -35,16 +35,30 @@ export const getMealOrders = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    let mealQuery = ctx.db.query("mealOrders");
+    const { userId, status } = args;
 
-    if (args.userId) {
-      mealQuery = mealQuery.withIndex("by_userId", (q) => q.eq("userId", args.userId));
+    if (userId && status) {
+      return await ctx.db
+        .query("mealOrders")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .filter((q) => q.eq(q.field("status"), status))
+        .order("desc")
+        .collect();
+    } else if (userId) {
+      return await ctx.db
+        .query("mealOrders")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .order("desc")
+        .collect();
+    } else if (status) {
+      return await ctx.db
+        .query("mealOrders")
+        .withIndex("by_status", (q) => q.eq("status", status))
+        .order("desc")
+        .collect();
+    } else {
+      return await ctx.db.query("mealOrders").order("desc").collect();
     }
-    if (args.status) {
-      mealQuery = mealQuery.withIndex("by_status", (q) => q.eq("status", args.status));
-    }
-
-    return await mealQuery.order("desc").collect();
   },
 });
 

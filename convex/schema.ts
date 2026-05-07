@@ -210,7 +210,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_activityId", ["activityId"])
-    .index("by_activity_user", ["activityId", "userId"]),
+    .index("by_activity_user", ["activityId", "userId"])
+    .index("by_userId", ["userId"]),
   
   // HSE Management
   hseIncidents: defineTable({
@@ -284,6 +285,7 @@ export default defineSchema({
     })),
     countdownDays: v.optional(v.number()),
     notificationsSent: v.optional(v.array(v.string())), // Track notifications to HoD, Kitchen, etc.
+    createdAt: v.number(),
   }).index("by_userId", ["userId"])
     .index("by_status", ["status"])
     .index("by_type", ["type"]),
