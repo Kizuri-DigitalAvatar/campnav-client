@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { BedDouble, Brush, Shirt, ShoppingBag, Truck, Wrench, ClipboardList, ArrowRight } from "lucide-react"
+import { BedDouble, Brush, Shirt, ShoppingBag, Wrench, ClipboardList, ArrowRight, ShieldAlert, Calendar, ChefHat, Plane } from "lucide-react"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
 import { redirect } from "next/navigation"
@@ -35,9 +35,24 @@ const SERVICES = [
     icon: Shirt,
   },
   {
-    label: "Delivery",
-    href: "/delivery",
-    icon: Truck,
+    label: "Meals",
+    href: "/meals",
+    icon: ChefHat,
+  },
+  {
+    label: "RnR / Leave",
+    href: "/rnr",
+    icon: Plane,
+  },
+  {
+    label: "HSE Report",
+    href: "/hse/report",
+    icon: ShieldAlert,
+  },
+  {
+    label: "Facility Booking",
+    href: "/facilities/booking",
+    icon: Calendar,
   },
 ]
 

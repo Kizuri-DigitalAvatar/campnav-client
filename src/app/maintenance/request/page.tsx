@@ -11,13 +11,14 @@ import { Card } from "@/components/ui/card"
 import { useAuth } from "@/components/auth-provider"
 import { api } from "../../../../convex/_generated/api"
 
-const CATEGORIES = ["Plumbing", "Electrical", "General Repairs", "Other"] as const
+const CATEGORIES = ["Plumbing", "Electrical", "General Repairs", "AC", "Other"] as const
 type Category = (typeof CATEGORIES)[number]
 
 const SUB_CATEGORIES: Record<Category, string[]> = {
   Plumbing: ["Taps/Faucets", "Toilet", "Pipes/Leaks", "Hot Water", "Other"],
   Electrical: ["Light Bulbs", "Sockets & Switches", "Appliances", "Wiring Fault", "Other"],
   "General Repairs": ["Doors/Locks", "Windows", "Furniture", "Walls/Ceiling", "Other"],
+  AC: ["Not Cooling", "Leaking", "Strange Noise", "Won't Turn On", "Filter Cleaning", "Other"],
   Other: ["Other (please specify)"],
 }
 
@@ -29,6 +30,7 @@ export default function MaintenanceRequestPage() {
   const [roomNumber, setRoomNumber] = useState("")
   const [description, setDescription] = useState("")
   const [applianceModel, setApplianceModel] = useState("")
+  const [dateNoticed, setDateNoticed] = useState("")
   const [accessPreference, setAccessPreference] = useState<"allow_entry" | "must_be_present">("allow_entry")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -74,6 +76,7 @@ export default function MaintenanceRequestPage() {
         category,
         subCategory,
         applianceModel: applianceModel.trim(),
+        dateNoticed,
         accessPreference,
         image: storageId,
       })
@@ -177,6 +180,18 @@ export default function MaintenanceRequestPage() {
            />
          </div>
         )}
+
+        <div className="space-y-1 text-xs animate-in fade-in slide-in-from-top-2 duration-200">
+          <label className="block text-[11px] font-medium text-muted-foreground">
+            Date fault noticed
+          </label>
+          <Input
+            type="date"
+            className="h-10 rounded-xl"
+            value={dateNoticed}
+            onChange={(e) => setDateNoticed(e.target.value)}
+          />
+        </div>
 
         <div className="space-y-1 text-xs">
           <label className="block text-[11px] font-medium text-muted-foreground">

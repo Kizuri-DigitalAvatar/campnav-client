@@ -288,6 +288,15 @@ export default function AssignmentDetailPage() {
                             )}
                         </>
                     )}
+                    {/* TASK COMPLETED STATE */}
+                    {(task.status === "completed" || task.status === "rated") && (
+                        <button
+                            onClick={() => router.push("/assignments")}
+                            className="flex-1 bg-muted text-muted-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-muted/80 transition-all"
+                        >
+                            Back to Assignments
+                        </button>
+                    )}
                 </div>
             )}
         </div>

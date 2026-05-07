@@ -15,6 +15,8 @@ export const create = mutation({
         category: v.optional(v.string()),
         subCategory: v.optional(v.string()),
         applianceModel: v.optional(v.string()),
+        dateNoticed: v.optional(v.string()),
+        specialAttention: v.optional(v.boolean()),
         accessPreference: v.optional(v.string()),
         laundryItems: v.optional(v.array(v.object({
             name: v.string(),
@@ -75,6 +77,13 @@ export const create = mutation({
             requestId,
             roomNumber: args.roomNumber,
             serviceType: dutyType,
+            description: args.description,
+            priority: args.priority,
+            category: args.category,
+            subCategory: args.subCategory,
+            applianceModel: args.applianceModel,
+            accessPreference: args.accessPreference,
+            image: args.image,
             status: assignedStaffId ? "pending" : "pending", // pending confirmation from staff
             assignedAt: Date.now(),
         });

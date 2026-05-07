@@ -27,6 +27,13 @@ export const list = query({
     },
 });
 
+export const getRooms = query({
+    args: {},
+    handler: async (ctx) => {
+        return await ctx.db.query("rooms").collect();
+    },
+});
+
 export const create = mutation({
     args: {
         roomNumber: v.string(),

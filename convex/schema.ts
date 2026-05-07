@@ -16,7 +16,8 @@ export default defineSchema({
     email: v.string(),
     image: v.optional(v.string()),
     password: v.optional(v.string()),
-    role: v.optional(v.string()), // admin, camper, camp-staff, visitor
+    role: v.optional(v.string()), // camp_manager, camp_supervisor, staff, resident, guest
+    department: v.optional(v.string()), // housekeeping, maintenance, shop, kitchen, etc.
     assignedDuties: v.optional(v.array(v.string())), // For camp-staff: ["housekeeping", "maintenance", "laundry"]
     currentTaskId: v.optional(v.id("tasks")), // For tracking if camp-staff is vacant
     phoneNumber: v.optional(v.string()), // For SMS notifications
@@ -31,6 +32,8 @@ export default defineSchema({
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
     roomNumber: v.optional(v.string()), // For campers
+    dietaryRequirements: v.optional(v.array(v.string())), // For meal preferences
+    disciplinaryPoints: v.optional(v.number()), // For loyalty point deductions
   })
     .index("by_role", ["role"])
     .index("by_email", ["email"]),
@@ -125,12 +128,15 @@ export default defineSchema({
   }).index("by_status", ["status"]),
   rooms: defineTable({
     roomNumber: v.string(),
-    category: v.string(), // "standard", "deluxe", "cabin"
+    category: v.string(), // "executive", "hq_house", "standard"
+    subCategory: v.optional(v.string()), // E1, E2, E3, E4, H1:1, H1:2, etc.
+    bedConfiguration: v.optional(v.string()), // B1, B2 for standard rooms
     capacity: v.number(),
     status: v.string(), // "available", "occupied", "maintenance"
     occupantId: v.optional(v.id("users")), // current visitor
     pricePerNight: v.optional(v.number()),
-  }).index("by_status", ["status"]),
+  }).index("by_status", ["status"])
+    .index("by_category", ["category"]),
   products: defineTable({
     name: v.string(),
     description: v.string(),
@@ -159,6 +165,8 @@ export default defineSchema({
     category: v.optional(v.string()),
     subCategory: v.optional(v.string()),
     applianceModel: v.optional(v.string()),
+    dateNoticed: v.optional(v.string()),
+    specialAttention: v.optional(v.boolean()),
     accessPreference: v.optional(v.string()),
     officeUse: v.optional(v.object({
       urgency: v.optional(v.string()),
@@ -203,4 +211,176 @@ export default defineSchema({
   })
     .index("by_activityId", ["activityId"])
     .index("by_activity_user", ["activityId", "userId"]),
+  
+  // HSE Management
+  hseIncidents: defineTable({
+    title: v.string(),
+    description: v.string(),
+    type: v.string(), // "incident", "hazard"
+    location: v.string(), // "camp", "site"
+    severity: v.string(), // "low", "medium", "high", "critical"
+    reportedBy: v.id("users"),
+    assignedTo: v.optional(v.id("users")),
+    status: v.string(), // "open", "in_progress", "resolved", "closed"
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    images: v.optional(v.array(v.string())),
+    correctiveActions: v.optional(v.array(v.string())),
+  }).index("by_status", ["status"])
+    .index("by_type", ["type"])
+    .index("by_severity", ["severity"]),
+    
+  // Emergency Broadcasts
+  emergencyBroadcasts: defineTable({
+    title: v.string(),
+    message: v.string(),
+    type: v.string(), // "weather", "fire", "security", "general"
+    severity: v.string(), // "low", "medium", "high", "critical"
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    expiresAt: v.optional(v.number()),
+    targetAudience: v.optional(v.array(v.string())), // ["all", "staff", "residents"]
+    siteStatus: v.optional(v.string()), // "operational", "restricted", "closed"
+  }).index("by_active", ["isActive"])
+    .index("by_type", ["type"]),
+    
+  // Safety Checklists
+  safetyChecklists: defineTable({
+    title: v.string(),
+    category: v.string(), // "daily", "weekly", "monthly", "audit"
+    items: v.array(v.object({
+      description: v.string(),
+      required: v.boolean(),
+      completed: v.optional(v.boolean()),
+      notes: v.optional(v.string()),
+      completedBy: v.optional(v.id("users")),
+      completedAt: v.optional(v.number()),
+    })),
+    assignedTo: v.optional(v.id("users")),
+    dueDate: v.number(),
+    status: v.string(), // "pending", "in_progress", "completed", "overdue"
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_status", ["status"])
+    .index("by_category", ["category"]),
+    
+  // RnR Management
+  rnrRequests: defineTable({
+    userId: v.id("users"),
+    type: v.string(), // "leave", "flight", "accommodation"
+    startDate: v.number(),
+    endDate: v.number(),
+    status: v.string(), // "pending", "approved", "rejected", "completed"
+    reason: v.string(),
+    approvedBy: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    flightDetails: v.optional(v.object({
+      bookingReference: v.string(),
+      departure: v.string(),
+      arrival: v.string(),
+      airline: v.string(),
+      confirmationCode: v.string(),
+    })),
+    countdownDays: v.optional(v.number()),
+    notificationsSent: v.optional(v.array(v.string())), // Track notifications to HoD, Kitchen, etc.
+  }).index("by_userId", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_type", ["type"]),
+    
+  // Meal Management
+  mealOrders: defineTable({
+    userId: v.id("users"),
+    date: v.number(), // Date of meal (timestamp)
+    mealType: v.string(), // "breakfast", "lunch", "dinner"
+    items: v.array(v.object({
+      name: v.string(),
+      quantity: v.number(),
+      specialInstructions: v.optional(v.string()),
+    })),
+    dietaryRestrictions: v.array(v.string()),
+    preferences: v.optional(v.object({
+      riceType: v.string(), // "rice", "bulgur"
+      spiceLevel: v.string(), // "mild", "medium", "spicy"
+    })),
+    status: v.string(), // "pending", "confirmed", "preparing", "ready", "completed"
+    createdAt: v.number(),
+    confirmedAt: v.optional(v.number()),
+    readyAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"])
+    .index("by_date", ["date"])
+    .index("by_status", ["status"]),
+    
+  // Facilities Booking
+  facilityBookings: defineTable({
+    userId: v.id("users"),
+    facility: v.string(), // "gym", "mini_golf", "tennis"
+    date: v.number(),
+    startTime: v.string(),
+    endTime: v.string(),
+    status: v.string(), // "pending", "confirmed", "cancelled", "completed"
+    numberOfParticipants: v.optional(v.number()),
+    specialRequests: v.optional(v.string()),
+    createdAt: v.number(),
+    confirmedAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"])
+    .index("by_facility", ["facility"])
+    .index("by_date", ["date"])
+    .index("by_status", ["status"]),
+    
+  // Preventive Maintenance
+  preventiveMaintenance: defineTable({
+    title: v.string(),
+    type: v.string(), // "grease_service", "fumigation", "ac_service", "general"
+    frequency: v.string(), // "daily", "weekly", "monthly", "quarterly", "annually"
+    lastCompleted: v.optional(v.number()),
+    nextDue: v.number(),
+    assignedTo: v.optional(v.id("users")),
+    status: v.string(), // "pending", "in_progress", "completed", "overdue"
+    checklist: v.array(v.object({
+      item: v.string(),
+      completed: v.boolean(),
+      notes: v.optional(v.string()),
+      completedAt: v.optional(v.number()),
+    })),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_status", ["status"])
+    .index("by_type", ["type"])
+    .index("by_nextDue", ["nextDue"]),
+    
+  // Invoicing
+  invoices: defineTable({
+    userId: v.id("users"),
+    invoiceNumber: v.string(),
+    period: v.string(), // "monthly", "weekly"
+    startDate: v.number(),
+    endDate: v.number(),
+    items: v.array(v.object({
+      description: v.string(),
+      quantity: v.number(),
+      unitPrice: v.number(),
+      total: v.number(),
+    })),
+    subtotal: v.number(),
+    tax: v.number(),
+    total: v.number(),
+    status: v.string(), // "draft", "sent", "paid", "overdue"
+    paymentMethod: v.optional(v.string()), // "cash", "card", "transfer"
+    paidAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"])
+    .index("by_status", ["status"]),
+    
+  // Loyalty Points Transactions
+  loyaltyTransactions: defineTable({
+    userId: v.id("users"),
+    type: v.string(), // "earned", "redeemed", "deducted"
+    points: v.number(),
+    reason: v.string(),
+    relatedTo: v.optional(v.string()), // Reference to related entity
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"])
+    .index("by_type", ["type"]),
 });

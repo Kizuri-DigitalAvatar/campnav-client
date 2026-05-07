@@ -16,6 +16,7 @@ export default function TasksPage() {
   const { user } = useAuth()
   const [instructions, setInstructions] = useState("")
   const [roomNumber, setRoomNumber] = useState("")
+  const [specialAttention, setSpecialAttention] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const createRequest = useMutation(api.requests.create)
@@ -31,6 +32,7 @@ export default function TasksPage() {
         roomNumber: roomNumber.trim(),
         description: instructions || "Standard housekeeping requested.",
         priority: "low",
+        specialAttention,
       })
       alert("Housekeeping request submitted!")
       router.push("/requests")
@@ -81,6 +83,23 @@ export default function TasksPage() {
             value={instructions}
             onChange={(e) => setInstructions(e.target.value)}
           />
+        </div>
+
+        {/* Special Attention Checkbox */}
+        <div className="flex items-center gap-3 px-1">
+          <input
+            type="checkbox"
+            id="special-attention"
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            checked={specialAttention}
+            onChange={(e) => setSpecialAttention(e.target.checked)}
+          />
+          <label
+            htmlFor="special-attention"
+            className="text-[11px] font-medium text-muted-foreground cursor-pointer select-none"
+          >
+            Requires special attention / extra care
+          </label>
         </div>
 
         {/* Actions */}

@@ -13,7 +13,8 @@ import { api } from "../../../convex/_generated/api"
 const LAUNDRY_ITEMS = [
   "Shirts", "Pants", "Handkerchiefs", "Undershirt", "Socks, pair", 
   "Undershorts/Briefs", "Bra", "Panties", "Nightgown", 
-  "Pajamas - 2 pc.", "Pajamas - silk", "Blouse", "Slip", "Robe"
+  "Pajamas - 2 pc.", "Pajamas - silk", "Blouse", "Slip", "Robe",
+  "PPE Shirt", "PPE Trousers"
 ]
 
 const DRY_CLEANING_ITEMS = [
