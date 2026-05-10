@@ -272,12 +272,13 @@ export default function RoomServicePage() {
                       <h3 className="text-sm font-black uppercase tracking-tight italic">{item.name}</h3>
                       <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed font-medium">{item.description}</p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="text-sm font-black text-primary italic">Le {item.price.toFixed(2)}</span>
-                        
+                        <span className="text-sm font-black text-primary italic">Le {(item.price ?? 0).toFixed(2)}</span>
+
                         <button
                           type="button"
-                          disabled={item.stock <= 0}
-                          onClick={() => {
+                          disabled={(item.stock ?? 0) <= 0}
+                          onClick={(e) => {
+                            e.stopPropagation()
                             if (!roomNumber.trim()) {
                                setShowRoomNumberModal(true)
                                return
@@ -290,7 +291,7 @@ export default function RoomServicePage() {
                           }}
                           className="h-8 px-4 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-90"
                         >
-                          {item.stock <= 0 ? "OUT OF STOCK" : "ADD TO CART"}
+                          {(item.stock ?? 0) <= 0 ? "OUT OF STOCK" : "ADD TO CART"}
                         </button>
                       </div>
                     </div>
@@ -362,7 +363,7 @@ export default function RoomServicePage() {
               <div className="flex items-center justify-between pt-4 border-t-2 border-dashed">
                 <div className="space-y-0.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block">Price</span>
-                  <span className="text-2xl font-black text-primary italic">Le {selectedProduct.price.toFixed(2)}</span>
+                  <span className="text-2xl font-black text-primary italic">Le {(selectedProduct.price ?? 0).toFixed(2)}</span>
                 </div>
                 
                 <button

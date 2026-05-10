@@ -7,35 +7,39 @@ export const list = query({
         service: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        let baseQuery;
-        if (args.service && args.service !== "none") {
-            baseQuery = ctx.db.query("products").withIndex("by_service", (q) => q.eq("service", args.service!));
-        } else if (args.category && args.category !== "all") {
-            baseQuery = ctx.db.query("products").withIndex("by_category", (q) => q.eq("category", args.category!));
-        } else {
-            baseQuery = ctx.db.query("products");
-        }
+        try {
+            let baseQuery;
+            if (args.service && args.service !== "none") {
+                baseQuery = ctx.db.query("products").withIndex("by_service", (q) => q.eq("service", args.service!));
+            } else if (args.category && args.category !== "all") {
+                baseQuery = ctx.db.query("products").withIndex("by_category", (q) => q.eq("category", args.category!));
+            } else {
+                baseQuery = ctx.db.query("products");
+            }
 
-        const products = await baseQuery.order("desc").collect();
+            const products = await baseQuery.order("desc").collect();
 
-        return Promise.all(
-            products.map(async (p) => {
-                let imageUrl = null;
-                if (p.image) {
-                    if (p.image.startsWith("http")) {
-                        imageUrl = p.image;
-                    } else {
-                        try {
-                            imageUrl = await ctx.storage.getUrl(p.image);
-                        } catch (e) {
-                            console.error("Failed to get product image URL", p.image, e);
-                            imageUrl = null;
+            return Promise.all(
+                products.map(async (p) => {
+                    let imageUrl: string | null = null;
+                    if (p.image) {
+                        if (p.image.startsWith("http")) {
+                            imageUrl = p.image;
+                        } else {
+                            try {
+                                imageUrl = await ctx.storage.getUrl(p.image as any);
+                            } catch (e) {
+                                console.error("Failed to get product image URL", p.image, e);
+                            }
                         }
                     }
-                }
-                return { ...p, imageUrl };
-            })
-        );
+                    return { ...p, imageUrl };
+                })
+            );
+        } catch (e) {
+            console.error("products.list handler error", e);
+            return [];
+        }
     },
 });
 

@@ -4,27 +4,31 @@ import { v } from "convex/values";
 export const list = query({
     args: { category: v.optional(v.string()) },
     handler: async (ctx, args) => {
-        const menusQuery = ctx.db.query("menus");
-        const menus = await menusQuery.order("desc").collect();
+        try {
+            const menus = await ctx.db.query("menus").order("desc").collect();
 
-        const results = await Promise.all(
-            menus.map(async (menu) => {
-                let url = null;
-                if (menu.storageId) {
-                    try {
-                        url = await ctx.storage.getUrl(menu.storageId);
-                    } catch (e) {
-                        console.error("Failed to get menu storage URL", e);
+            const results = await Promise.all(
+                menus.map(async (menu) => {
+                    let url: string | null = null;
+                    if (menu.storageId) {
+                        try {
+                            url = await ctx.storage.getUrl(menu.storageId as any);
+                        } catch (e) {
+                            console.error("Failed to get menu storage URL", e);
+                        }
                     }
-                }
-                return { ...menu, url };
-            })
-        );
+                    return { ...menu, url };
+                })
+            );
 
-        if (args.category) {
-            return results.filter(m => m.category === args.category);
+            if (args.category) {
+                return results.filter(m => m.category === args.category);
+            }
+            return results;
+        } catch (e) {
+            console.error("menus.list handler error", e);
+            return [];
         }
-        return results;
     },
 });
 
