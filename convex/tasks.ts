@@ -2,6 +2,45 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
+export const assignStaffToRequest = mutation({
+    args: {
+        requestId: v.id("requests"),
+        staffId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const request = await ctx.db.get(args.requestId);
+        if (!request) throw new Error("Request not found");
+
+        const tasks = await ctx.db.query("tasks").collect();
+        const existingTask = tasks.find(t => t.requestId === args.requestId);
+
+        if (existingTask) {
+            if (existingTask.staffId && existingTask.staffId !== args.staffId) {
+                const prev = await ctx.db.get(existingTask.staffId);
+                if (prev?.currentTaskId === existingTask._id) {
+                    await ctx.db.patch(existingTask.staffId, { currentTaskId: undefined });
+                }
+            }
+            await ctx.db.patch(existingTask._id, { staffId: args.staffId, status: "pending" });
+            await ctx.db.patch(args.staffId, { currentTaskId: existingTask._id });
+        } else {
+            const taskId = await ctx.db.insert("tasks", {
+                staffId: args.staffId,
+                requestId: args.requestId,
+                roomNumber: request.roomNumber,
+                serviceType: request.type,
+                description: request.description,
+                priority: request.priority,
+                status: "pending",
+                assignedAt: Date.now(),
+            });
+            await ctx.db.patch(args.staffId, { currentTaskId: taskId });
+        }
+
+        await ctx.db.patch(args.requestId, { status: "in_progress" });
+    },
+});
+
 export const assign = mutation({
     args: {
         staffId: v.id("users"),

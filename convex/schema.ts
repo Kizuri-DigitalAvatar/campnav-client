@@ -29,6 +29,7 @@ export default defineSchema({
     durationStart: v.optional(v.number()), // For visitors (timestamp)
     durationEnd: v.optional(v.number()), // For visitors (timestamp)
     isOnSite: v.optional(v.boolean()), // For camp-staff
+    lastAccessScan: v.optional(v.number()), // Last access scan timestamp
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
     roomNumber: v.optional(v.string()), // For campers
