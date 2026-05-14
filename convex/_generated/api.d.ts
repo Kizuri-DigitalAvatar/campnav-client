@@ -19,6 +19,7 @@ import type * as files from "../files.js";
 import type * as hse from "../hse.js";
 import type * as hseIncidents from "../hseIncidents.js";
 import type * as images from "../images.js";
+import type * as loginLogs from "../loginLogs.js";
 import type * as meals from "../meals.js";
 import type * as menus from "../menus.js";
 import type * as notifications from "../notifications.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   hse: typeof hse;
   hseIncidents: typeof hseIncidents;
   images: typeof images;
+  loginLogs: typeof loginLogs;
   meals: typeof meals;
   menus: typeof menus;
   notifications: typeof notifications;

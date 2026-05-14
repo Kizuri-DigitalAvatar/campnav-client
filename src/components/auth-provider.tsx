@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { useConvex, useMutation } from "convex/react"
+import { useConvex } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 
@@ -54,9 +54,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  function parseUA(ua: string) {
+    const browser =
+      /Edg\//.test(ua) ? "Edge" :
+      /OPR\/|Opera/.test(ua) ? "Opera" :
+      /Chrome\//.test(ua) ? "Chrome" :
+      /Firefox\//.test(ua) ? "Firefox" :
+      /Safari\//.test(ua) ? "Safari" : "Unknown"
+    const os =
+      /Windows NT/.test(ua) ? "Windows" :
+      /Mac OS X/.test(ua) ? "macOS" :
+      /Android/.test(ua) ? "Android" :
+      /iPhone|iPad/.test(ua) ? "iOS" :
+      /Linux/.test(ua) ? "Linux" : "Unknown"
+    const device =
+      /iPhone/.test(ua) ? "iPhone" :
+      /iPad/.test(ua) ? "iPad" :
+      /Android/.test(ua) ? "Android" :
+      /Mobile/.test(ua) ? "Mobile" : "Desktop"
+    return { browser, os, device }
+  }
+
   const login = useCallback(
     async (input: { email: string; password?: string }) => {
       setLoading(true)
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : ""
+      const { browser, os, device } = parseUA(ua)
+      let ip: string | undefined
+      try { ip = await fetch("https://api64.ipify.org?format=json").then(r => r.json()).then(d => d.ip) } catch { }
+
       try {
         const dbUser = await convex.query(api.users.verifyUser, {
           email: input.email,
@@ -64,6 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
 
         if (!dbUser) {
+          await convex.mutation(api.loginLogs.log, {
+            email: input.email, app: "client", status: "failed",
+            ipAddress: ip, userAgent: ua, browser, os, device,
+          })
           throw new Error("Invalid email or password")
         }
 
@@ -80,6 +110,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (typeof window !== "undefined") {
           window.localStorage.setItem(STORAGE_KEY, JSON.stringify(mapped))
         }
+
+        await convex.mutation(api.loginLogs.log, {
+          userId: dbUser._id,
+          email: dbUser.email,
+          userName: dbUser.name,
+          role: dbUser.role,
+          app: "client",
+          status: "success",
+          ipAddress: ip,
+          userAgent: ua,
+          browser,
+          os,
+          device,
+        })
       } finally {
         setLoading(false)
       }
