@@ -432,8 +432,80 @@ export default defineSchema({
     type: v.string(), // "earned", "redeemed", "deducted"
     points: v.number(),
     reason: v.string(),
-    relatedTo: v.optional(v.string()), // Reference to related entity
+    relatedTo: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_userId", ["userId"])
     .index("by_type", ["type"]),
+
+  safetyIncidents: defineTable({
+    userId: v.id("users"),
+    type: v.string(),
+    severity: v.string(),
+    location: v.string(),
+    category: v.string(),
+    description: v.string(),
+    immediateAction: v.optional(v.string()),
+    rootCause: v.optional(v.string()),
+    preventiveAction: v.optional(v.string()),
+    status: v.string(),
+    reportedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    images: v.optional(v.array(v.string())),
+    witnessStatements: v.optional(v.array(v.string())),
+    investigationNotes: v.optional(v.string()),
+    correctiveActions: v.optional(v.array(v.object({
+      action: v.string(),
+      assignedTo: v.optional(v.string()),
+      dueDate: v.optional(v.number()),
+      completed: v.optional(v.boolean()),
+      completedAt: v.optional(v.number()),
+    }))),
+  }).index("by_status", ["status"])
+    .index("by_severity", ["severity"])
+    .index("by_type", ["type"])
+    .index("by_location", ["location"])
+    .index("by_reportedAt", ["reportedAt"]),
+
+  safetyAudits: defineTable({
+    userId: v.id("users"),
+    auditType: v.string(),
+    location: v.string(),
+    checklistItems: v.array(v.object({
+      item: v.string(),
+      category: v.string(),
+      required: v.boolean(),
+      completed: v.boolean(),
+      score: v.optional(v.number()),
+      notes: v.optional(v.string()),
+      images: v.optional(v.array(v.string())),
+    })),
+    overallScore: v.number(),
+    status: v.string(),
+    auditorName: v.string(),
+    auditDate: v.number(),
+    nextAuditDate: v.optional(v.number()),
+    recommendations: v.optional(v.array(v.string())),
+    followUpRequired: v.boolean(),
+    followUpCompleted: v.optional(v.boolean()),
+    followUpDate: v.optional(v.number()),
+  }).index("by_status", ["status"])
+    .index("by_auditType", ["auditType"])
+    .index("by_auditDate", ["auditDate"]),
+
+  loginLogs: defineTable({
+    userId: v.optional(v.id("users")),
+    email: v.string(),
+    userName: v.optional(v.string()),
+    role: v.optional(v.string()),
+    app: v.string(),
+    status: v.string(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    browser: v.optional(v.string()),
+    os: v.optional(v.string()),
+    device: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_app", ["app"])
+    .index("by_status", ["status"])
+    .index("by_userId", ["userId"]),
 });
