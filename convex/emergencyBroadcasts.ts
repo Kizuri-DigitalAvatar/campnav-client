@@ -7,15 +7,19 @@ export const createBroadcast = mutation({
     message: v.string(),
     type: v.string(),
     severity: v.string(),
-    createdBy: v.id("users"),
-    targetAudience: v.optional(v.array(v.string())),
-    siteStatus: v.optional(v.string()),
+    userId: v.id("users"),
+    affectedAreas: v.array(v.string()),
+    targetAudience: v.array(v.string()),
+    deliveryChannels: v.array(v.string()),
+    instructions: v.optional(v.array(v.string())),
+    estimatedDuration: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
+    siteStatus: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const broadcastId = await ctx.db.insert("emergencyBroadcasts", {
       ...args,
-      isActive: true,
+      status: "active",
       createdAt: Date.now(),
     });
     return broadcastId;
@@ -26,7 +30,7 @@ export const getActiveBroadcasts = query({
   handler: async (ctx) => {
     return await ctx.db
       .query("emergencyBroadcasts")
-      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
   },
 });
@@ -40,11 +44,12 @@ export const getAllBroadcasts = query({
 export const updateBroadcastStatus = mutation({
   args: {
     broadcastId: v.id("emergencyBroadcasts"),
-    isActive: v.boolean(),
+    status: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.broadcastId, {
-      isActive: args.isActive,
+      status: args.status,
+      ...(args.status === "resolved" ? { resolvedAt: Date.now() } : {}),
     });
   },
 });

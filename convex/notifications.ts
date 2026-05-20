@@ -85,7 +85,7 @@ export const sendAssignmentNotification = mutation({
     },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("User not found");
+        if (!user) return;
 
         const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
         const notifications = [];
@@ -144,10 +144,10 @@ export const sendReminderNotification = mutation({
     },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("User not found");
+        if (!user) return;
 
         const assignment = await ctx.db.get(args.assignmentId);
-        if (!assignment) throw new Error("Assignment not found");
+        if (!assignment) return;
 
         const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
 
@@ -215,7 +215,12 @@ export const sendCamperNotification = mutation({
     },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("User not found");
+        if (!user) {
+            console.warn(
+                `[sendCamperNotification] Skipping notification for missing user ${args.userId}`
+            );
+            return;
+        }
 
         const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
         const notifications = [];
@@ -415,4 +420,3 @@ export const updateNotificationStatus = internalMutation({
         });
     },
 });
-

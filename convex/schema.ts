@@ -31,9 +31,24 @@ export default defineSchema({
     isOnSite: v.optional(v.boolean()), // For camp-staff
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
-    roomNumber: v.optional(v.string()), // For campers
-    dietaryRequirements: v.optional(v.array(v.string())), // For meal preferences
-    disciplinaryPoints: v.optional(v.number()), // For loyalty point deductions
+    roomNumber: v.optional(v.string()),
+    dietaryRequirements: v.optional(v.array(v.string())),
+    disciplinaryPoints: v.optional(v.number()),
+    userCategory: v.optional(v.string()),
+    userSubcategory: v.optional(v.string()),
+    roomCategory: v.optional(v.string()),
+    accessLevel: v.optional(v.number()),
+    lastAccessScan: v.optional(v.number()),
+    leaveBalance: v.optional(v.number()),
+    onLeaveUntil: v.optional(v.number()),
+    supervisorId: v.optional(v.id("users")),
+    hireDate: v.optional(v.number()),
+    contractType: v.optional(v.string()),
+    emergencyContact: v.optional(v.object({
+      name: v.string(),
+      phone: v.string(),
+      relationship: v.string(),
+    })),
   })
     .index("by_role", ["role"])
     .index("by_email", ["email"]),
@@ -233,18 +248,31 @@ export default defineSchema({
     
   // Emergency Broadcasts
   emergencyBroadcasts: defineTable({
+    userId: v.id("users"),
+    type: v.string(), // "weather", "fire", "security", "medical", "site_breakdown"
+    severity: v.string(), // "low", "medium", "high", "critical"
     title: v.string(),
     message: v.string(),
-    type: v.string(), // "weather", "fire", "security", "general"
-    severity: v.string(), // "low", "medium", "high", "critical"
-    isActive: v.boolean(),
-    createdBy: v.id("users"),
+    affectedAreas: v.array(v.string()),
+    instructions: v.optional(v.array(v.string())),
+    estimatedDuration: v.optional(v.string()),
+    status: v.string(), // "active", "resolved", "cancelled"
     createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    targetAudience: v.array(v.string()),
+    deliveryChannels: v.array(v.string()),
+    deliveryStatus: v.optional(v.array(v.object({
+      channel: v.string(),
+      sent: v.boolean(),
+      sentAt: v.optional(v.number()),
+      failureReason: v.optional(v.string()),
+    }))),
     expiresAt: v.optional(v.number()),
-    targetAudience: v.optional(v.array(v.string())), // ["all", "staff", "residents"]
-    siteStatus: v.optional(v.string()), // "operational", "restricted", "closed"
-  }).index("by_active", ["isActive"])
-    .index("by_type", ["type"]),
+    siteStatus: v.optional(v.string()),
+  }).index("by_status", ["status"])
+    .index("by_type", ["type"])
+    .index("by_severity", ["severity"])
+    .index("by_createdAt", ["createdAt"]),
     
   // Safety Checklists
   safetyChecklists: defineTable({
@@ -317,11 +345,11 @@ export default defineSchema({
   // Facilities Booking
   facilityBookings: defineTable({
     userId: v.id("users"),
-    facility: v.string(), // "gym", "mini_golf", "tennis"
+    facility: v.string(),
     date: v.number(),
     startTime: v.string(),
     endTime: v.string(),
-    status: v.string(), // "pending", "confirmed", "cancelled", "completed"
+    status: v.string(),
     numberOfParticipants: v.optional(v.number()),
     specialRequests: v.optional(v.string()),
     createdAt: v.number(),
@@ -330,6 +358,29 @@ export default defineSchema({
     .index("by_facility", ["facility"])
     .index("by_date", ["date"])
     .index("by_status", ["status"]),
+
+  facilities: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    category: v.optional(v.string()),
+    location: v.optional(v.string()),
+    capacity: v.optional(v.number()),
+    images: v.optional(v.array(v.string())),
+    amenities: v.optional(v.array(v.string())),
+    openingTime: v.optional(v.string()),
+    closingTime: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    createdBy: v.optional(v.id("users")),
+  }).index("by_active", ["isActive"])
+    .index("by_category", ["category"]),
+
+  adminPresence: defineTable({
+    userId: v.id("users"),
+    lastSeen: v.number(),
+    currentPage: v.optional(v.string()),
+  }).index("by_userId", ["userId"])
+    .index("by_lastSeen", ["lastSeen"]),
     
   // Preventive Maintenance
   preventiveMaintenance: defineTable({
