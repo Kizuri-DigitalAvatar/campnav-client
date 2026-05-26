@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, ChevronDown } from "lucide-react"
 import { useMutation, useQuery } from "convex/react"
@@ -18,6 +18,13 @@ export default function TasksPage() {
   const [roomNumber, setRoomNumber] = useState("")
   const [specialAttention, setSpecialAttention] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Populate room number dynamically from user profile if available, otherwise leave open
+  useEffect(() => {
+    if (user?.roomNumber && !roomNumber) {
+      setRoomNumber(user.roomNumber)
+    }
+  }, [user?.roomNumber])
 
   const createRequest = useMutation(api.requests.create)
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Truck } from "lucide-react"
 import { useMutation } from "convex/react"
@@ -19,6 +19,13 @@ export default function DeliveryPage() {
     const [toRoom, setToRoom] = useState("")
     const [instructions, setInstructions] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // Populate room number dynamically from user profile if available, otherwise leave open
+    useEffect(() => {
+        if (user?.roomNumber && !toRoom) {
+            setToRoom(user.roomNumber)
+        }
+    }, [user?.roomNumber])
 
     const createRequest = useMutation(api.requests.create)
 

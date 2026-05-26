@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, X, Upload } from "lucide-react"
 import { useMutation } from "convex/react"
@@ -33,6 +33,13 @@ export default function MaintenanceRequestPage() {
   const [dateNoticed, setDateNoticed] = useState("")
   const [accessPreference, setAccessPreference] = useState<"allow_entry" | "must_be_present">("allow_entry")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Populate room number dynamically from user profile if available, otherwise leave open
+  useEffect(() => {
+    if (user?.roomNumber && !roomNumber) {
+      setRoomNumber(user.roomNumber)
+    }
+  }, [user?.roomNumber])
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)

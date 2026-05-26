@@ -17,7 +17,9 @@ export default defineSchema({
     image: v.optional(v.string()),
     password: v.optional(v.string()),
     role: v.optional(v.string()), // camp_manager, camp_supervisor, staff, resident, guest
-    department: v.optional(v.string()), // housekeeping, maintenance, shop, kitchen, etc.
+    userCategory: v.optional(v.string()), // admin, staff, residents
+    userSubcategory: v.optional(v.string()), // super_admin, kitchen, guest, etc.
+    department: v.optional(v.string()), // For staff: housekeeping, maintenance, kitchen, shop, electrical
     assignedDuties: v.optional(v.array(v.string())), // For camp-staff: ["housekeeping", "maintenance", "laundry"]
     currentTaskId: v.optional(v.id("tasks")), // For tracking if camp-staff is vacant
     phoneNumber: v.optional(v.string()), // For SMS notifications
@@ -29,12 +31,24 @@ export default defineSchema({
     durationStart: v.optional(v.number()), // For visitors (timestamp)
     durationEnd: v.optional(v.number()), // For visitors (timestamp)
     isOnSite: v.optional(v.boolean()), // For camp-staff
-    lastAccessScan: v.optional(v.number()), // Last access scan timestamp
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
     roomNumber: v.optional(v.string()), // For campers
     dietaryRequirements: v.optional(v.array(v.string())), // For meal preferences
-    disciplinaryPoints: v.optional(v.number()), // For loyalty point deductions
+    roomCategory: v.optional(v.string()), // executive, hq_house, standard
+    accessLevel: v.optional(v.number()), // 1-5 access level for different areas
+    lastAccessScan: v.optional(v.number()), // Last time they scanned in/out
+    disciplinaryPoints: v.optional(v.number()), // Points deducted for disciplinary issues / loyalty points deductions
+    leaveBalance: v.optional(v.number()), // Days of leave remaining
+    onLeaveUntil: v.optional(v.number()), // Timestamp until when they're on leave
+    supervisorId: v.optional(v.id("users")), // For staff reporting hierarchy
+    hireDate: v.optional(v.number()), // When they were hired
+    contractType: v.optional(v.string()), // permanent, temporary, contractor
+    emergencyContact: v.optional(v.object({
+      name: v.string(),
+      phone: v.string(),
+      relationship: v.string(),
+    })),
   })
     .index("by_role", ["role"])
     .index("by_email", ["email"]),
@@ -70,12 +84,12 @@ export default defineSchema({
     roomNumber: v.string(),
     serviceType: v.string(), // e.g. "housekeeping", "maintenance", "laundry"
     description: v.optional(v.string()),
-    priority: v.optional(v.string()),
+    priority: v.optional(v.string()), // "urgent" | "important" | "low"
     category: v.optional(v.string()),
     subCategory: v.optional(v.string()),
     applianceModel: v.optional(v.string()),
-    accessPreference: v.optional(v.string()),
-    image: v.optional(v.string()),
+    accessPreference: v.optional(v.string()), // "allow_entry" | "must_be_present"
+    image: v.optional(v.string()), // storageId
     status: v.string(), // "pending", "confirmed", "in_progress", "completed", "rated"
     viewedBy: v.optional(v.array(v.id("users"))), // Track which staff members have viewed this task
     assignedAt: v.number(),
@@ -129,7 +143,7 @@ export default defineSchema({
   }).index("by_status", ["status"]),
   rooms: defineTable({
     roomNumber: v.string(),
-    category: v.string(), // "executive", "hq_house", "standard"
+    category: v.string(), // "standard", "deluxe", "cabin", "executive", "hq_house"
     subCategory: v.optional(v.string()), // E1, E2, E3, E4, H1:1, H1:2, etc.
     bedConfiguration: v.optional(v.string()), // B1, B2 for standard rooms
     capacity: v.number(),
@@ -213,6 +227,91 @@ export default defineSchema({
     .index("by_activityId", ["activityId"])
     .index("by_activity_user", ["activityId", "userId"])
     .index("by_userId", ["userId"]),
+  safetyIncidents: defineTable({
+    userId: v.id("users"),
+    type: v.string(), // "injury", "near_miss", "property_damage", "environmental"
+    severity: v.string(), // "low", "medium", "high", "critical"
+    location: v.string(), // "camp", "site", "vehicle", "office"
+    category: v.string(), // "slip_trip_fall", "equipment", "vehicle", "fire", "chemical", "other"
+    description: v.string(),
+    immediateAction: v.optional(v.string()),
+    rootCause: v.optional(v.string()),
+    preventiveAction: v.optional(v.string()),
+    status: v.string(), // "open", "investigating", "resolved", "closed"
+    reportedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    images: v.optional(v.array(v.string())), // storageIds
+    witnessStatements: v.optional(v.array(v.string())),
+    investigationNotes: v.optional(v.string()),
+    correctiveActions: v.optional(v.array(v.object({
+      action: v.string(),
+      assignedTo: v.optional(v.string()),
+      dueDate: v.optional(v.number()),
+      completed: v.optional(v.boolean()),
+      completedAt: v.optional(v.number()),
+    }))),
+  }).index("by_status", ["status"])
+    .index("by_severity", ["severity"])
+    .index("by_type", ["type"])
+    .index("by_location", ["location"])
+    .index("by_reportedAt", ["reportedAt"]),
+  safetyAudits: defineTable({
+    userId: v.id("users"),
+    auditType: v.string(), // "safety_checklist", "equipment_inspection", "site_audit", "fire_safety"
+    location: v.string(),
+    checklistItems: v.array(v.object({
+      item: v.string(),
+      category: v.string(),
+      required: v.boolean(),
+      completed: v.boolean(),
+      score: v.optional(v.number()), // 1-5 rating
+      notes: v.optional(v.string()),
+      images: v.optional(v.array(v.string())), // storageIds
+    })),
+    overallScore: v.number(), // 0-100 percentage
+    status: v.string(), // "passed", "failed", "needs_improvement"
+    auditorName: v.string(),
+    auditDate: v.number(),
+    nextAuditDate: v.optional(v.number()),
+    recommendations: v.optional(v.array(v.string())),
+    followUpRequired: v.boolean(),
+    followUpCompleted: v.optional(v.boolean()),
+    followUpDate: v.optional(v.number()),
+  }).index("by_status", ["status"])
+    .index("by_auditType", ["auditType"])
+    .index("by_auditDate", ["auditDate"]),
+  emergencyBroadcasts: defineTable({
+    // Core fields (required by both admin and client)
+    title: v.string(),
+    message: v.string(),
+    type: v.string(), // "weather", "fire", "security", "medical", "site_breakdown", "general"
+    severity: v.string(), // "low", "medium", "high", "critical"
+    createdAt: v.number(),
+    // Admin broadcast fields
+    userId: v.optional(v.id("users")),
+    affectedAreas: v.optional(v.array(v.string())), // ["camp", "site_a", "site_b"]
+    instructions: v.optional(v.array(v.string())),
+    estimatedDuration: v.optional(v.string()), // "2 hours", "until further notice"
+    status: v.optional(v.string()), // "active", "resolved", "cancelled"
+    resolvedAt: v.optional(v.number()),
+    targetAudience: v.optional(v.array(v.string())), // ["all_staff", "residents", "visitors", "management", "all"]
+    deliveryChannels: v.optional(v.array(v.string())), // ["push", "email", "sms", "display_boards"]
+    deliveryStatus: v.optional(v.array(v.object({
+      channel: v.string(),
+      sent: v.boolean(),
+      sentAt: v.optional(v.number()),
+      failureReason: v.optional(v.string()),
+    }))),
+    // Client broadcast fields
+    isActive: v.optional(v.boolean()),
+    createdBy: v.optional(v.id("users")),
+    expiresAt: v.optional(v.number()),
+    siteStatus: v.optional(v.string()), // "operational", "restricted", "closed"
+  }).index("by_status", ["status"])
+    .index("by_active", ["isActive"])
+    .index("by_type", ["type"])
+    .index("by_severity", ["severity"])
+    .index("by_createdAt", ["createdAt"]),
   
   // HSE Management
   hseIncidents: defineTable({
@@ -232,30 +331,6 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_severity", ["severity"]),
     
-  // Emergency Broadcasts
-  emergencyBroadcasts: defineTable({
-    title: v.string(),
-    message: v.string(),
-    type: v.string(), // "weather", "fire", "security", "general"
-    severity: v.string(), // "low", "medium", "high", "critical"
-    isActive: v.optional(v.boolean()),
-    createdBy: v.optional(v.id("users")),
-    createdAt: v.number(),
-    expiresAt: v.optional(v.number()),
-    targetAudience: v.optional(v.array(v.string())), // ["all", "staff", "residents"]
-    siteStatus: v.optional(v.string()), // "operational", "restricted", "closed"
-    userId: v.optional(v.string()),
-    status: v.optional(v.string()),
-    resolvedAt: v.optional(v.number()),
-    affectedAreas: v.optional(v.array(v.string())),
-    deliveryChannels: v.optional(v.array(v.string())),
-    deliveryStatus: v.optional(v.array(v.any())),
-    estimatedDuration: v.optional(v.string()),
-    instructions: v.optional(v.array(v.any())),
-  }).index("by_active", ["isActive"])
-    .index("by_type", ["type"]),
-    
-  // Safety Checklists
   safetyChecklists: defineTable({
     title: v.string(),
     category: v.string(), // "daily", "weekly", "monthly", "audit"
@@ -270,12 +345,12 @@ export default defineSchema({
     assignedTo: v.optional(v.id("users")),
     dueDate: v.number(),
     status: v.string(), // "pending", "in_progress", "completed", "overdue"
+    overallScore: v.number(), // 0-100 percentage
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   }).index("by_status", ["status"])
     .index("by_category", ["category"]),
     
-  // RnR Management
   rnrRequests: defineTable({
     userId: v.id("users"),
     type: v.string(), // "leave", "flight", "accommodation"
@@ -299,7 +374,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_type", ["type"]),
     
-  // Meal Management
   mealOrders: defineTable({
     userId: v.id("users"),
     date: v.number(), // Date of meal (timestamp)
@@ -323,7 +397,6 @@ export default defineSchema({
     .index("by_date", ["date"])
     .index("by_status", ["status"]),
     
-  // Facilities Booking
   facilityBookings: defineTable({
     userId: v.id("users"),
     facility: v.string(), // "gym", "mini_golf", "tennis"
@@ -340,7 +413,6 @@ export default defineSchema({
     .index("by_date", ["date"])
     .index("by_status", ["status"]),
     
-  // Preventive Maintenance
   preventiveMaintenance: defineTable({
     title: v.string(),
     type: v.string(), // "grease_service", "fumigation", "ac_service", "general"
@@ -361,7 +433,6 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_nextDue", ["nextDue"]),
     
-  // Invoicing
   invoices: defineTable({
     userId: v.id("users"),
     invoiceNumber: v.string(),
@@ -384,7 +455,6 @@ export default defineSchema({
   }).index("by_userId", ["userId"])
     .index("by_status", ["status"]),
     
-  // Loyalty Points Transactions
   loyaltyTransactions: defineTable({
     userId: v.id("users"),
     type: v.string(), // "earned", "redeemed", "deducted"
@@ -394,6 +464,15 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_userId", ["userId"])
     .index("by_type", ["type"]),
+  occupancySnapshots: defineTable({
+    date: v.string(),
+    totalRooms: v.number(),
+    occupiedRooms: v.number(),
+    availableRooms: v.number(),
+    maintenanceRooms: v.number(),
+    occupancyRate: v.number(),
+    createdAt: v.number(),
+  }).index("by_date", ["date"]),
 
   loginLogs: defineTable({
     userId: v.optional(v.id("users")),

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Upload, X, Plus, Minus, Info } from "lucide-react"
 import { useMutation } from "convex/react"
@@ -41,6 +41,13 @@ export default function LaundryPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+
+  // Populate room number dynamically from user profile if available, otherwise leave open
+  useEffect(() => {
+    if (user?.roomNumber && !roomNumber) {
+      setRoomNumber(user.roomNumber)
+    }
+  }, [user?.roomNumber])
 
   const createRequest = useMutation(api.requests.create)
   const generateUploadUrl = useMutation(api.images.generateUploadUrl)

@@ -41,6 +41,11 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         if (!isAllowed) {
           router.replace("/")
         }
+      } else {
+        // Role-based restrictions for non-workers (campers/visitors)
+        if (path === "/assignments" || path.startsWith("/assignments/")) {
+          router.replace("/")
+        }
       }
     }
   }, [user, loading, pathname, router])
