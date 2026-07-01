@@ -253,7 +253,8 @@ export const sendReminderNotification = mutation({
 export const notifyAdminUnresponsive = mutation({
     args: {
         assignmentId: v.id("tasks"),
-        workerName: v.string(),
+        requestId: v.optional(v.id("requests")),
+        workerName: v.optional(v.string()),
         message: v.string(),
     },
     handler: async (ctx, args) => {
@@ -271,6 +272,7 @@ export const notifyAdminUnresponsive = mutation({
                 ctx.db.insert("notifications", {
                     userId: admin._id,
                     assignmentId: args.assignmentId,
+                    requestId: args.requestId,
                     type: "admin_alert",
                     channel: "push",
                     status: "pending",
@@ -283,6 +285,7 @@ export const notifyAdminUnresponsive = mutation({
                     ctx.db.insert("notifications", {
                         userId: admin._id,
                         assignmentId: args.assignmentId,
+                        requestId: args.requestId,
                         type: "admin_alert",
                         channel: "email",
                         status: "pending",
