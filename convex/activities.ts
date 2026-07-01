@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
 import { api } from "./_generated/api";
+import { v } from "convex/values";
 
 export const create = mutation({
     args: {
@@ -17,7 +17,6 @@ export const create = mutation({
         const id = await ctx.db.insert("activities", {
             ...args,
         });
-        // Notify campers about new activity
         await ctx.runMutation(api.notifications.sendRoleNotification, {
             role: "camper",
             type: "activity",
@@ -40,7 +39,12 @@ export const list = query({
                     coverImageUrl = null;
                 }
             }
-            return { ...a, coverImageUrl };
+            const interested = await ctx.db
+                .query("activityInterests")
+                .withIndex("by_activityId", (q) => q.eq("activityId", a._id))
+                .collect();
+            const interestedCount = a.interestedCount ?? interested.length;
+            return { ...a, coverImageUrl, interestedCount, interested };
         }));
     },
 });

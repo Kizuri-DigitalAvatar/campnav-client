@@ -80,6 +80,7 @@ export const update = mutation({
         const menu = await ctx.db.get(args.id);
         if (!menu) throw new Error("Menu not found");
 
+        // Handle storage replacement or removal
         if (args.storageId && args.storageId !== menu.storageId && menu.storageId) {
             await ctx.storage.delete(menu.storageId);
         } else if (args.clearStorage && menu.storageId) {
@@ -91,8 +92,13 @@ export const update = mutation({
         if (args.category !== undefined) updates.category = args.category;
         if (args.schedule !== undefined) updates.schedule = args.schedule;
         if (args.type !== undefined) updates.type = args.type;
-        if (args.content !== undefined) updates.content = args.content;
 
+        // Switching to text content
+        if (args.content !== undefined) {
+            updates.content = args.content;
+        }
+
+        // Update storage reference
         if (args.storageId !== undefined) {
             updates.storageId = args.storageId;
             if (args.content === undefined) updates.content = null;

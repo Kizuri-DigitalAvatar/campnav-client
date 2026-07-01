@@ -10,6 +10,7 @@ export const create = mutation({
         description: v.string(),
         priority: v.string(),
         image: v.optional(v.string()),
+        staffId: v.optional(v.id("users")),
         
         // New fields
         category: v.optional(v.string()),
@@ -50,29 +51,29 @@ export const create = mutation({
 
         const dutyType = typeDutyMap[args.type.toLowerCase()] || args.type.toLowerCase();
 
-        // Find vacant camp-staff with matching duty
-        const allStaff = await ctx.db
-            .query("users")
-            .withIndex("by_role", (q) => q.eq("role", "camp-staff"))
-            .collect();
+        let assignedStaffId: any = args.staffId;
 
-        // Filter staff who have this duty assigned and are currently vacant
-        const availableStaff = allStaff.filter(staff => {
-            const duties = staff.assignedDuties || [];
-            const hasMatchingDuty = duties.includes(dutyType);
-            const isVacant = !staff.currentTaskId; // No current task means vacant
-            return hasMatchingDuty && isVacant;
-        });
+        // If no staff explicitly chosen, pick a vacant matching staffer
+        if (!assignedStaffId) {
+            const allStaff = await ctx.db
+                .query("users")
+                .withIndex("by_role", (q) => q.eq("role", "camp-staff"))
+                .collect();
 
-        let assignedStaffId: any = undefined;
+            const availableStaff = allStaff.filter(staff => {
+                const duties = staff.assignedDuties || [];
+                const hasMatchingDuty = duties.includes(dutyType);
+                const isVacant = !staff.currentTaskId; // No current task means vacant
+                return hasMatchingDuty && isVacant;
+            });
 
-        // If we have available staff, assign to the first one
-        if (availableStaff.length > 0) {
-            assignedStaffId = availableStaff[0]._id;
+            if (availableStaff.length > 0) {
+                assignedStaffId = availableStaff[0]._id;
+            }
         }
 
-        // Create task assignment
-        const taskId = await ctx.db.insert("tasks", {
+        // Create tasks/assignment
+        const assignmentId = await ctx.db.insert("tasks", {
             staffId: assignedStaffId,
             requestId,
             roomNumber: args.roomNumber,
@@ -84,23 +85,22 @@ export const create = mutation({
             applianceModel: args.applianceModel,
             accessPreference: args.accessPreference,
             image: args.image,
-            status: assignedStaffId ? "pending" : "pending", // pending confirmation from staff
+            status: "pending", // pending confirmation from staff
             assignedAt: Date.now(),
         });
 
         // If assigned to specific staff, update their currentTaskId
         if (assignedStaffId) {
             await ctx.db.patch(assignedStaffId, {
-                currentTaskId: taskId,
+                currentTaskId: assignmentId,
             });
         }
 
         // Notify all camp-staff about the new task (vacant staff will see it on their board)
-        // This matches the user's request to broadcast to all staff
         const displayType = args.type.charAt(0).toUpperCase() + args.type.slice(1).replace("_", " ");
         await ctx.runMutation(api.notifications.sendRoleNotification, {
             role: "camp-staff",
-            assignmentId: taskId,
+            assignmentId,
             requestId,
             type: "assignment",
             message: `New ${displayType} Request: ${args.roomNumber} - ${args.category ? `[${args.category}${args.subCategory ? ` / ${args.subCategory}` : ""}] ` : ""}${args.description}`,
@@ -308,5 +308,28 @@ export const getWithTaskDetails = query({
         }
 
         return { ...request, imageUrl, taskDetails };
+    },
+});
+
+export const updateOfficeUse = mutation({
+    args: {
+        id: v.id("requests"),
+        urgency: v.optional(v.string()),
+        tradesperson: v.optional(v.string()),
+        workOrderSent: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const { id, ...officeUseFields } = args;
+        const request = await ctx.db.get(id);
+        if (!request) throw new Error("Request not found");
+
+        await ctx.db.patch(id, {
+            officeUse: {
+                ...(request.officeUse || {}),
+                ...officeUseFields,
+            },
+            // If urgency is set, also update the main priority field for compatibility
+            ...(args.urgency ? { priority: args.urgency } : {}),
+        });
     },
 });

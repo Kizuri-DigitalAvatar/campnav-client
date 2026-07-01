@@ -1,6 +1,5 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
 import { api } from "./_generated/api";
 
 export const create = mutation({
@@ -21,6 +20,7 @@ export const create = mutation({
             coverImage: args.coverImage,
             createdAt: Date.now(),
         });
+
         if (args.broadcast) {
             const message = `📢 ${args.priority.toUpperCase()} UPDATE: ${args.title}\n\n${args.content.substring(0, 120)}${args.content.length > 120 ? "..." : ""}`;
             await Promise.all([
@@ -36,6 +36,7 @@ export const create = mutation({
                 }),
             ]);
         }
+
         return id;
     },
 });

@@ -2,6 +2,93 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
+// Assign a staff member to an existing request's task
+export const assignStaffToRequest = mutation({
+    args: {
+        requestId: v.id("requests"),
+        staffId: v.id("users"),
+    },
+    handler: async (ctx, args) => {
+        const request = await ctx.db.get(args.requestId);
+        if (!request) throw new Error("Request not found");
+
+        const tasks = await ctx.db.query("tasks").collect();
+        const existingTask = tasks.find(t => t.requestId === args.requestId);
+
+        let taskId: any;
+
+        if (existingTask) {
+            if (existingTask.staffId && existingTask.staffId !== args.staffId) {
+                const prev = await ctx.db.get(existingTask.staffId);
+                if (prev?.currentTaskId === existingTask._id) {
+                    await ctx.db.patch(existingTask.staffId, { currentTaskId: undefined });
+                }
+            }
+            await ctx.db.patch(existingTask._id, { staffId: args.staffId, status: "pending" });
+            await ctx.db.patch(args.staffId, { currentTaskId: existingTask._id });
+            taskId = existingTask._id;
+        } else {
+            taskId = await ctx.db.insert("tasks", {
+                staffId: args.staffId,
+                requestId: args.requestId,
+                roomNumber: request.roomNumber,
+                serviceType: request.type,
+                description: request.description,
+                priority: request.priority,
+                status: "pending",
+                assignedAt: Date.now(),
+            });
+            await ctx.db.patch(args.staffId, { currentTaskId: taskId });
+        }
+
+        await ctx.db.patch(args.requestId, { status: "in_progress" });
+
+        const serviceLabel = request.type.replace("_", " ");
+        const staff = await ctx.db.get(args.staffId);
+
+        // Notify the assigned staff member
+        await ctx.runMutation(api.notifications.sendAssignmentNotification, {
+            userId: args.staffId,
+            assignmentId: taskId,
+            message: `New ${serviceLabel} task assigned — Room ${request.roomNumber}: ${request.description}`,
+        });
+
+        // Notify the resident that their request is now in progress
+        const resident = await ctx.db.get(request.userId);
+        if (resident) {
+            const prefs = resident.notificationPreferences ?? { push: true, email: true, sms: false };
+            const residentMsg = `Your ${serviceLabel} request for ${request.roomNumber} has been assigned to ${staff?.name ?? "a staff member"} and is now in progress.`;
+            const inserts = [];
+            if (prefs.push) {
+                inserts.push(ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: taskId,
+                    requestId: args.requestId,
+                    type: "assignment",
+                    channel: "push",
+                    status: "pending",
+                    message: residentMsg,
+                }));
+            }
+            if (prefs.email && resident.email) {
+                inserts.push(ctx.db.insert("notifications", {
+                    userId: request.userId,
+                    assignmentId: taskId,
+                    requestId: args.requestId,
+                    type: "assignment",
+                    channel: "email",
+                    status: "pending",
+                    message: residentMsg,
+                }));
+            }
+            await Promise.all(inserts);
+        }
+
+        // Trigger email processing immediately
+        await ctx.scheduler.runAfter(0, api.notifications.processEmailNotifications, {});
+    },
+});
+
 export const assign = mutation({
     args: {
         staffId: v.id("users"),
@@ -93,11 +180,35 @@ export const list = query({
                 if (a.requestId) {
                     const req = await ctx.db.get(a.requestId);
                     if (req) {
+                        let imageUrl = null;
+                        if (req.image) {
+                            try { imageUrl = await ctx.storage.getUrl(req.image); } catch (e) { }
+                        }
                         requestDetails = {
                             description: req.description,
                             priority: req.priority,
+                            imageUrl,
+                            category: req.category,
+                            subCategory: req.subCategory,
+                            accessPreference: req.accessPreference,
+                            applianceModel: req.applianceModel,
                         };
                     }
+                } else {
+                    // Use fields on the assignment itself (manual admin-created task)
+                    let imageUrl = null;
+                    if (a.image) {
+                        try { imageUrl = await ctx.storage.getUrl(a.image); } catch (e) { }
+                    }
+                    requestDetails = {
+                        description: a.description,
+                        priority: a.priority,
+                        imageUrl,
+                        category: a.category,
+                        subCategory: a.subCategory,
+                        accessPreference: a.accessPreference,
+                        applianceModel: a.applianceModel,
+                    };
                 }
 
                 return { ...a, staffName, requestDetails };
@@ -187,8 +298,6 @@ export const getWorkerAssignments = query({
             .collect();
 
         // Also get unassigned tasks that are pending
-        // Since we don't have a specific index for staffId === null, 
-        // we'll query by status "pending" and filter.
         const unassignedTasks = await ctx.db
             .query("tasks")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
@@ -268,7 +377,6 @@ export const acknowledgeAssignment = mutation({
         };
         if (args.staffId) {
             patch.staffId = args.staffId;
-
             // Mark staff as busy
             await ctx.db.patch(args.staffId, {
                 currentTaskId: args.id,

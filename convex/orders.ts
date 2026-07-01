@@ -24,9 +24,6 @@ export const list = query({
     if (args.source && args.source !== "all" && args.status && args.status !== "all") {
       orders = orders.filter((o: any) => o.status === args.status);
     }
-    // If we only filtered by status via index, or only by source via index, or no filters, 
-    // the index already handled it. 
-    // The only case where we need manual filtering is when BOTH source and status are provided.
 
     const results = await Promise.all(
       orders.map(async (o: any) => {
@@ -42,7 +39,6 @@ export const list = query({
           }
         }
 
-        // Resolve product image if we have a storageId or missing url
         let productImage = o.productImage;
         if (productImage && !productImage.startsWith("http")) {
           try {
@@ -52,7 +48,6 @@ export const list = query({
           }
         }
         if (!productImage && o.source === "shop") {
-          // Fallback: look up product by name
           const productList = await ctx.db.query("products").collect();
           const product = productList.find(p => p.name === o.summary);
           if (product?.image) {
@@ -166,6 +161,7 @@ export const deleteOrder = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
 export const listForUser = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {

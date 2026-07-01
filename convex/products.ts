@@ -27,9 +27,10 @@ export const list = query({
                             imageUrl = p.image;
                         } else {
                             try {
-                                imageUrl = await ctx.storage.getUrl(p.image as any);
+                                imageUrl = await ctx.storage.getUrl(p.image);
                             } catch (e) {
                                 console.error("Failed to get product image URL", p.image, e);
+                                imageUrl = null;
                             }
                         }
                     }

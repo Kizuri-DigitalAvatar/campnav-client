@@ -1,4 +1,5 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 
@@ -17,11 +18,6 @@ export const sendRoleNotification = mutation({
             .query("users")
             .withIndex("by_role", (q) => q.eq("role", args.role))
             .collect();
-
-        console.log(`[sendRoleNotification] Found ${users.length} users with role: ${args.role}`);
-        if (users.length > 0) {
-            console.log(`[sendRoleNotification] User emails: ${users.map(u => u.email).join(", ")}`);
-        }
 
         const notifications = [];
 
@@ -43,7 +39,6 @@ export const sendRoleNotification = mutation({
             }
 
             if (prefs.email && user.email) {
-                console.log(`Queueing email notification for: ${user.email}`);
                 notifications.push(
                     ctx.db.insert("notifications", {
                         userId: user._id,
@@ -85,7 +80,7 @@ export const sendAssignmentNotification = mutation({
     },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) return;
+        if (!user) throw new Error("User not found");
 
         const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
         const notifications = [];
@@ -105,7 +100,6 @@ export const sendAssignmentNotification = mutation({
         }
 
         if (prefs.email && user.email) {
-            console.log(`Queueing email notification for: ${user.email}`);
             notifications.push(
                 ctx.db.insert("notifications", {
                     userId: args.userId,
@@ -135,76 +129,6 @@ export const sendAssignmentNotification = mutation({
     },
 });
 
-// Send reminder notification
-export const sendReminderNotification = mutation({
-    args: {
-        userId: v.id("users"),
-        assignmentId: v.id("tasks"),
-        message: v.string(),
-    },
-    handler: async (ctx, args) => {
-        const user = await ctx.db.get(args.userId);
-        if (!user) return;
-
-        const assignment = await ctx.db.get(args.assignmentId);
-        if (!assignment) return;
-
-        const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
-
-        // Update assignment reminder tracking
-        await ctx.db.patch(args.assignmentId, {
-            lastReminderSent: Date.now(),
-            reminderCount: (assignment.reminderCount || 0) + 1,
-        });
-
-        // Send notifications based on preferences
-        const notifications = [];
-
-        if (prefs.push) {
-            notifications.push(
-                ctx.db.insert("notifications", {
-                    userId: args.userId,
-                    assignmentId: args.assignmentId,
-                    type: "reminder",
-                    channel: "push",
-                    status: "pending",
-                    message: args.message,
-                })
-            );
-        }
-
-        if (prefs.email && user.email) {
-            console.log(`Queueing email notification for: ${user.email}`);
-            notifications.push(
-                ctx.db.insert("notifications", {
-                    userId: args.userId,
-                    assignmentId: args.assignmentId,
-                    type: "reminder",
-                    channel: "email",
-                    status: "pending",
-                    message: args.message,
-                })
-            );
-        }
-
-        if (prefs.sms && user.phoneNumber) {
-            notifications.push(
-                ctx.db.insert("notifications", {
-                    userId: args.userId,
-                    assignmentId: args.assignmentId,
-                    type: "reminder",
-                    channel: "sms",
-                    status: "pending",
-                    message: args.message,
-                })
-            );
-        }
-
-        await Promise.all(notifications);
-    },
-});
-
-// Notify camper about task status update
 export const sendCamperNotification = mutation({
     args: {
         userId: v.id("users"),
@@ -257,12 +181,79 @@ export const sendCamperNotification = mutation({
     },
 });
 
-// Notify admin about unresponsive worker or request
+// Send reminder notification
+export const sendReminderNotification = mutation({
+    args: {
+        userId: v.id("users"),
+        assignmentId: v.id("tasks"),
+        message: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (!user) throw new Error("User not found");
+
+        const assignment = await ctx.db.get(args.assignmentId);
+        if (!assignment) throw new Error("Assignment not found");
+
+        const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+
+        // Update assignment reminder tracking
+        await ctx.db.patch(args.assignmentId, {
+            lastReminderSent: Date.now(),
+            reminderCount: (assignment.reminderCount || 0) + 1,
+        });
+
+        // Send notifications based on preferences
+        const notifications = [];
+
+        if (prefs.push) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    type: "reminder",
+                    channel: "push",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        if (prefs.email && user.email) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    type: "reminder",
+                    channel: "email",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        if (prefs.sms && user.phoneNumber) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    type: "reminder",
+                    channel: "sms",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        await Promise.all(notifications);
+    },
+});
+
+// Notify admin about unresponsive worker
 export const notifyAdminUnresponsive = mutation({
     args: {
-        assignmentId: v.optional(v.id("tasks")),
-        requestId: v.optional(v.id("requests")),
-        workerName: v.optional(v.string()),
+        assignmentId: v.id("tasks"),
+        workerName: v.string(),
         message: v.string(),
     },
     handler: async (ctx, args) => {
@@ -280,7 +271,6 @@ export const notifyAdminUnresponsive = mutation({
                 ctx.db.insert("notifications", {
                     userId: admin._id,
                     assignmentId: args.assignmentId,
-                    requestId: args.requestId,
                     type: "admin_alert",
                     channel: "push",
                     status: "pending",
@@ -293,7 +283,6 @@ export const notifyAdminUnresponsive = mutation({
                     ctx.db.insert("notifications", {
                         userId: admin._id,
                         assignmentId: args.assignmentId,
-                        requestId: args.requestId,
                         type: "admin_alert",
                         channel: "email",
                         status: "pending",
@@ -366,10 +355,8 @@ export const getUnresponsiveWorkers = query({
         );
 
         return Promise.all(
-            unresponsive.map(async (a) => {
+            unresponsive.map(async (a: any) => {
                 const worker = a.staffId ? await ctx.db.get(a.staffId) : null;
-                // Double check if worker exists and has the expected fields
-                // Convex ctx.db.get return value depends on the table schema
                 const workerData = worker as any;
                 return {
                     ...a,
@@ -389,8 +376,6 @@ export const getPendingNotifications = query({
             .query("notifications")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
-
-        console.log(`[getPendingNotifications] Found ${pending.length} pending notifications in total`);
 
         return Promise.all(
             pending.map(async (n) => {
@@ -418,5 +403,71 @@ export const updateNotificationStatus = internalMutation({
             status: args.status,
             sentAt: args.status === "sent" ? Date.now() : undefined,
         });
+    },
+});
+
+// Action to process email notifications via Resend
+export const processEmailNotifications = action({
+    args: {},
+    handler: async (ctx) => {
+        const resendApiKey = process.env.RESEND_API_KEY;
+        if (!resendApiKey) {
+            console.error("RESEND_API_KEY not found in environment variables");
+            return;
+        }
+
+        const pending = await ctx.runQuery(api.notifications.getPendingNotifications);
+        const emailNotifications = pending.filter((n: any) => n.channel === "email" && n.userEmail);
+
+        console.log(`Processing ${emailNotifications.length} email notifications`);
+
+        for (const notif of emailNotifications) {
+            try {
+                const response = await fetch("https://api.resend.com/emails", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${resendApiKey}`,
+                    },
+                    body: JSON.stringify({
+                        from: "CAMPNAV <edward.kamara@kizuri-international.com>", // Use testing domain until campnav.com is verified
+                        to: [notif.userEmail],
+                        subject: `CAMPNAV: New Camp Service Request`,
+                        html: `
+                            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                                <h1 style="color: #000;">New Camp Service Request</h1>
+                                <p>${notif.message}</p>
+                                <hr />
+                                <p style="font-size: 12px; color: #666;">This is an automated notification from CAMPNAV.</p>
+                                <p style="font-size: 10px; color: #999;">Sent via Resend Test Domain</p>
+                            </div>
+                        `,
+                    }),
+                });
+
+                if (response.ok) {
+                    await ctx.runMutation(internal.notifications.updateNotificationStatus, {
+                        id: notif._id,
+                        status: "sent",
+                    });
+                } else {
+                    const errorData = await response.json();
+                    console.error("Failed to send email:", errorData);
+                    await ctx.runMutation(internal.notifications.updateNotificationStatus, {
+                        id: notif._id,
+                        status: "failed",
+                    });
+                }
+            } catch (error) {
+                console.error("Error processing email notification:", error);
+                await ctx.runMutation(internal.notifications.updateNotificationStatus, {
+                    id: notif._id,
+                    status: "failed",
+                });
+            }
+
+            // Add a small delay to respect Resend rate limits (2 req/sec free tier)
+            await new Promise(resolve => setTimeout(resolve, 600));
+        }
     },
 });
