@@ -13,6 +13,7 @@ import {
     ClipboardList,
     Clock,
     Megaphone,
+    MessageSquare,
     Star,
 } from "lucide-react"
 
@@ -37,6 +38,7 @@ function typeMeta(type: string) {
         case "activity": return { icon: Calendar, label: "Event" }
         case "acceptance": return { icon: CheckCircle, label: "Request Accepted" }
         case "progress": return { icon: Clock, label: "Work Started" }
+        case "update": return { icon: MessageSquare, label: "Task Update" }
         case "completion": return { icon: CheckCircle, label: "Request Completed" }
         default: return { icon: Bell, label: "Notification" }
     }

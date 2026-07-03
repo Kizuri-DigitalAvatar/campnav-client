@@ -484,6 +484,23 @@ export const addUpdate = mutation({
         updates.push(newUpdate);
 
         await ctx.db.patch(args.id, { updates });
+
+        // Let the requester know the staff member posted an update
+        const staff = assignment.staffId ? await ctx.db.get(assignment.staffId) : null;
+        const attachments = [
+            args.images?.length ? `${args.images.length} photo${args.images.length > 1 ? "s" : ""}` : null,
+            args.audio ? "a voice note" : null,
+        ].filter(Boolean).join(" and ");
+        const detail = args.text?.trim()
+            ? `: "${args.text.trim().slice(0, 140)}${args.text.trim().length > 140 ? "..." : ""}"`
+            : attachments ? ` with ${attachments}` : "";
+        await notifyRequester(
+            ctx,
+            assignment,
+            args.id,
+            "update",
+            `💬 ${(staff as any)?.name || "A staff member"} posted an update on ${taskLabel(assignment)}${detail}`
+        );
     },
 });
 
