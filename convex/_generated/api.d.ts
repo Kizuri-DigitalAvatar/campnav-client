@@ -25,6 +25,7 @@ import type * as loginLogs from "../loginLogs.js";
 import type * as loyalty from "../loyalty.js";
 import type * as maintenance from "../maintenance.js";
 import type * as meals from "../meals.js";
+import type * as menuOcr from "../menuOcr.js";
 import type * as menus from "../menus.js";
 import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   loyalty: typeof loyalty;
   maintenance: typeof maintenance;
   meals: typeof meals;
+  menuOcr: typeof menuOcr;
   menus: typeof menus;
   notifications: typeof notifications;
   orders: typeof orders;

@@ -17,7 +17,13 @@ export const list = query({
                             console.error("Failed to get menu storage URL", e);
                         }
                     }
-                    return { ...menu, url };
+                    const items = menu.items
+                        ? await Promise.all(menu.items.map(async (item) => ({
+                            ...item,
+                            imageUrl: item.image ? await ctx.storage.getUrl(item.image as any) : null,
+                        })))
+                        : undefined;
+                    return { ...menu, url, items };
                 })
             );
 
@@ -28,6 +34,110 @@ export const list = query({
         } catch (e) {
             console.error("menus.list handler error", e);
             return [];
+        }
+    },
+});
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MEAL_TYPE_ORDER = ["breakfast", "lunch", "dinner", "snack", "drink"];
+
+type MenuItem = {
+    name: string;
+    mealType: string;
+    description?: string;
+    image?: string;
+};
+
+// Plain-text fallback so surfaces that only read `content` still show the menu
+function itemsToText(items: MenuItem[]) {
+    const groups = new Map<string, MenuItem[]>();
+    for (const item of items) {
+        const key = item.mealType || "other";
+        groups.set(key, [...(groups.get(key) || []), item]);
+    }
+    const orderedKeys = [...groups.keys()].sort(
+        (a, b) => (MEAL_TYPE_ORDER.indexOf(a) + 100) % 100 - (MEAL_TYPE_ORDER.indexOf(b) + 100) % 100
+    );
+    return orderedKeys
+        .map((key) => {
+            const lines = (groups.get(key) || []).map(
+                (i) => `- ${i.name}${i.description ? ` — ${i.description}` : ""}`
+            );
+            return `${key.toUpperCase()}\n${lines.join("\n")}`;
+        })
+        .join("\n\n");
+}
+
+export const getWeek = query({
+    args: { weekStart: v.number() },
+    handler: async (ctx, args) => {
+        const menus = (await ctx.db.query("menus").collect()).filter(
+            (m) => m.weekStart === args.weekStart && m.dayOfWeek !== undefined
+        );
+        return await Promise.all(menus.map(async (menu) => ({
+            ...menu,
+            items: menu.items
+                ? await Promise.all(menu.items.map(async (item) => ({
+                    ...item,
+                    imageUrl: item.image ? await ctx.storage.getUrl(item.image as any) : null,
+                })))
+                : undefined,
+        })));
+    },
+});
+
+export const saveWeek = mutation({
+    args: {
+        weekStart: v.number(),
+        days: v.array(v.object({
+            dayOfWeek: v.number(),
+            items: v.array(v.object({
+                name: v.string(),
+                mealType: v.string(),
+                description: v.optional(v.string()),
+                image: v.optional(v.string()),
+            })),
+        })),
+    },
+    handler: async (ctx, args) => {
+        const existing = (await ctx.db.query("menus").collect()).filter(
+            (m) => m.weekStart === args.weekStart && m.dayOfWeek !== undefined
+        );
+
+        for (const day of args.days) {
+            const match = existing.find((m) => m.dayOfWeek === day.dayOfWeek);
+            const items = day.items
+                .map((i) => ({
+                    ...i,
+                    name: i.name.trim(),
+                    description: i.description?.trim() || undefined,
+                }))
+                .filter((i) => i.name);
+
+            if (items.length === 0) {
+                if (match) await ctx.db.delete(match._id);
+                continue;
+            }
+
+            const fields = {
+                items,
+                content: itemsToText(items),
+                uploadedAt: Date.now(),
+            };
+
+            if (match) {
+                await ctx.db.patch(match._id, fields);
+            } else {
+                await ctx.db.insert("menus", {
+                    name: `${DAY_NAMES[day.dayOfWeek]} Menu`,
+                    type: "text",
+                    category: "Room Service",
+                    schedule: "weekly",
+                    dayOfWeek: day.dayOfWeek,
+                    weekStart: args.weekStart,
+                    ...fields,
+                });
+            }
         }
     },
 });

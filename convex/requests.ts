@@ -52,23 +52,32 @@ export const create = mutation({
         const dutyType = typeDutyMap[args.type.toLowerCase()] || args.type.toLowerCase();
 
         let assignedStaffId: any = args.staffId;
+        let noVacantStaff = false;
 
-        // If no staff explicitly chosen, pick a vacant matching staffer
+        // If no staff explicitly chosen, pick from vacant staff (no active task)
         if (!assignedStaffId) {
-            const allStaff = await ctx.db
-                .query("users")
-                .withIndex("by_role", (q) => q.eq("role", "camp-staff"))
-                .collect();
+            const allStaff = (await Promise.all(
+                ["camp-staff", "staff"].map((role) =>
+                    ctx.db
+                        .query("users")
+                        .withIndex("by_role", (q) => q.eq("role", role))
+                        .collect()
+                )
+            )).flat();
 
-            const availableStaff = allStaff.filter(staff => {
-                const duties = staff.assignedDuties || [];
-                const hasMatchingDuty = duties.includes(dutyType);
-                const isVacant = !staff.currentTaskId; // No current task means vacant
-                return hasMatchingDuty && isVacant;
-            });
+            const vacantStaff = allStaff.filter((staff) => !staff.currentTaskId);
+            // Prefer vacant staff whose duties match the request type
+            const dutyMatched = vacantStaff.filter((staff) =>
+                (staff.assignedDuties || []).includes(dutyType)
+            );
 
-            if (availableStaff.length > 0) {
-                assignedStaffId = availableStaff[0]._id;
+            if (dutyMatched.length > 0) {
+                assignedStaffId = dutyMatched[0]._id;
+            } else if (vacantStaff.length > 0) {
+                assignedStaffId = vacantStaff[0]._id;
+            } else {
+                // Nobody is free — admins must assign manually
+                noVacantStaff = true;
             }
         }
 
@@ -105,6 +114,17 @@ export const create = mutation({
             type: "assignment",
             message: `New ${displayType} Request: ${args.roomNumber} - ${args.category ? `[${args.category}${args.subCategory ? ` / ${args.subCategory}` : ""}] ` : ""}${args.description}`,
         });
+
+        // No vacant staff — alert admins so they can assign someone manually
+        if (noVacantStaff) {
+            await ctx.runMutation(api.notifications.sendRoleNotification, {
+                role: "admin",
+                assignmentId,
+                requestId,
+                type: "admin_alert",
+                message: `⚠️ No vacant staff for ${displayType} request (Room ${args.roomNumber}): "${args.description}". Please assign a staff member manually.`,
+            });
+        }
 
         // Trigger email processing immediately (don't wait for cron)
         await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});

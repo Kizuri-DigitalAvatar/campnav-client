@@ -17,11 +17,19 @@ export const create = mutation({
         const id = await ctx.db.insert("activities", {
             ...args,
         });
-        await ctx.runMutation(api.notifications.sendRoleNotification, {
-            role: "camper",
-            type: "activity",
-            message: `📅 New activity: ${args.title} @ ${args.time} on ${new Date(args.date).toLocaleDateString()}`,
-        });
+        const message = `📅 New activity: ${args.title} @ ${args.time} on ${new Date(args.date).toLocaleDateString()}`;
+        await Promise.all([
+            ctx.runMutation(api.notifications.sendRoleNotification, {
+                role: "camper",
+                type: "activity",
+                message,
+            }),
+            ctx.runMutation(api.notifications.sendRoleNotification, {
+                role: "camp-staff",
+                type: "activity",
+                message,
+            }),
+        ]);
         return id;
     },
 });

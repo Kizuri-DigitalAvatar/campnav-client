@@ -43,6 +43,9 @@ export default function RoomServicePage() {
     }
     const isWithinWeek = (t: number) => now - t <= 7 * 24 * 60 * 60 * 1000
     return menus.filter((m: any) => {
+      if (m.dayOfWeek !== undefined && m.weekStart !== undefined) {
+        return now >= m.weekStart && now < m.weekStart + 7 * 24 * 60 * 60 * 1000
+      }
       if (m.schedule === "daily") return isSameDay(m.uploadedAt)
       if (m.schedule === "weekly") return isWithinWeek(m.uploadedAt)
       return true
@@ -192,8 +195,25 @@ export default function RoomServicePage() {
                         <summary className="flex items-center justify-center gap-2 cursor-pointer text-primary">
                           View Inline <ChevronRight className="h-3 w-3" />
                         </summary>
-                        <div className="mt-2 text-left text-xs text-muted-foreground whitespace-pre-wrap bg-background/60 p-3 rounded-xl border">
-                          {menu.content || "No content"}
+                        <div className="mt-2 text-left text-xs text-muted-foreground bg-background/60 p-3 rounded-xl border normal-case tracking-normal font-medium">
+                          {(menu as any).items?.length ? (
+                            <div className="space-y-2">
+                              {(menu as any).items.map((item: any, i: number) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  {item.imageUrl ? (
+                                    <img src={item.imageUrl} alt={item.name} className="w-8 h-8 rounded-lg object-cover border shrink-0" />
+                                  ) : null}
+                                  <div className="min-w-0">
+                                    <span className="font-bold">{item.name}</span>
+                                    <span className="ml-1.5 text-[8px] uppercase tracking-widest text-primary/70 font-black">{item.mealType}</span>
+                                    {item.description && <div className="text-muted-foreground/80 truncate">{item.description}</div>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="whitespace-pre-wrap">{menu.content || "No content"}</span>
+                          )}
                         </div>
                       </details>
                     ) : (
@@ -492,8 +512,31 @@ export default function RoomServicePage() {
                 <ChevronRight className="h-4 w-4 rotate-180" />
               </button>
             </div>
-            <div className="text-xs text-muted-foreground whitespace-pre-wrap bg-muted/30 border border-border rounded-xl p-4 max-h-[60vh] overflow-auto">
-              {inlineMenu.content || "No content"}
+            <div className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-xl p-4 max-h-[60vh] overflow-auto">
+              {inlineMenu.items?.length ? (
+                <div className="space-y-3">
+                  {inlineMenu.items.map((item: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 p-2 rounded-xl bg-background/60 border">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.name} className="w-14 h-14 rounded-xl object-cover border shrink-0" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                          <FileText className="h-5 w-5 text-muted-foreground/40" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-foreground">
+                          {item.name}
+                          <span className="ml-2 text-[9px] uppercase tracking-widest text-primary/70 font-black">{item.mealType}</span>
+                        </div>
+                        {item.description && <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="whitespace-pre-wrap">{inlineMenu.content || "No content"}</span>
+              )}
             </div>
           </Card>
         </div>

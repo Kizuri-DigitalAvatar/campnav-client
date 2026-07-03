@@ -3,12 +3,13 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Search, User, Menu, X, Home, Grid2X2, Bell, ChevronDown, Shirt, Utensils, ShoppingBag, Wrench, Brush, Truck, ClipboardList, ShoppingCart } from "lucide-react"
+import { Search, User, Menu, X, Home, Grid2X2, Bell, ChevronDown, Shirt, Utensils, ShoppingBag, Wrench, Brush, Truck, ClipboardList, ShoppingCart, Inbox } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
+import { NotificationBell } from "@/components/notification-bell"
 import { cn } from "@/lib/utils"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
@@ -47,6 +48,7 @@ export function Header() {
         ? [
             { href: "/", label: "Home", icon: Home },
             { href: "/assignments", label: "Assignments", icon: ClipboardList },
+            { href: "/available-tasks", label: "Available Tasks", icon: Inbox },
             { href: "/shop", label: "Shop", icon: ShoppingBag },
             { href: "/updates", label: "Announcements", icon: Bell },
             { href: "/profile", label: "Profile", icon: User },
@@ -77,7 +79,7 @@ export function Header() {
 
     return (
         <>
-            <header className="sticky top-0 z-30 w-full bg-background/80 backdrop-blur-md border-b">
+            <header className="fixed top-0 inset-x-0 md:left-64 z-30 bg-background/80 backdrop-blur-md border-b">
                 <div className="container flex items-center justify-between h-16 px-4 mx-auto md:px-6">
                     {/* Left: Logo */}
                     <Link href="/" className="flex items-center gap-2">
@@ -124,8 +126,9 @@ export function Header() {
                         )}
                     </div>
 
-                    {/* Right: Burger Menu + Profile */}
+                    {/* Right: Notifications + Burger Menu + Profile */}
                     <div className="flex items-center gap-2">
+                        <NotificationBell />
                         {/* Burger Menu Button (Mobile Only) */}
                         <Link
                             href="/history"

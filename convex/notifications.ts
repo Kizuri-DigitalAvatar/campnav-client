@@ -3,6 +3,16 @@ import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 
+// Role names have drifted over time; expand a role to all its aliases
+const ROLE_ALIASES: Record<string, string[]> = {
+    "camp-staff": ["camp-staff", "staff"],
+    "staff": ["camp-staff", "staff"],
+    "camper": ["camper", "visitor", "resident"],
+    "visitor": ["camper", "visitor", "resident"],
+    "resident": ["camper", "visitor", "resident"],
+    "admin": ["admin", "camp_manager", "camp_supervisor"],
+};
+
 // Send notification to all users with a specific role
 export const sendRoleNotification = mutation({
     args: {
@@ -13,11 +23,16 @@ export const sendRoleNotification = mutation({
         message: v.string(),
     },
     handler: async (ctx, args) => {
-        // Find all users with this role
-        const users = await ctx.db
-            .query("users")
-            .withIndex("by_role", (q) => q.eq("role", args.role))
-            .collect();
+        // Find all users with this role (including alias role names)
+        const roles = ROLE_ALIASES[args.role] || [args.role];
+        const users = (await Promise.all(
+            roles.map((role) =>
+                ctx.db
+                    .query("users")
+                    .withIndex("by_role", (q) => q.eq("role", role))
+                    .collect()
+            )
+        )).flat();
 
         const notifications = [];
 
@@ -327,6 +342,46 @@ export const getNotificationHistory = query({
             .withIndex("by_assignmentId", (q) => q.eq("assignmentId", args.assignmentId))
             .order("desc")
             .collect();
+    },
+});
+
+// In-app notification feed for the bell popup (push channel only, newest first)
+export const getForUser = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const notifications = await ctx.db
+            .query("notifications")
+            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+            .order("desc")
+            .collect();
+        return notifications
+            .filter((n) => n.channel === "push")
+            .slice(0, 50);
+    },
+});
+
+// Unread count for the bell badge
+export const getUnreadCount = query({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const notifications = await ctx.db
+            .query("notifications")
+            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+            .collect();
+        return notifications.filter((n) => n.channel === "push" && !n.readAt).length;
+    },
+});
+
+// Mark all of a user's in-app notifications as read (called when the popup opens)
+export const markAllRead = mutation({
+    args: { userId: v.id("users") },
+    handler: async (ctx, args) => {
+        const unread = (await ctx.db
+            .query("notifications")
+            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+            .collect()
+        ).filter((n) => n.channel === "push" && !n.readAt);
+        await Promise.all(unread.map((n) => ctx.db.patch(n._id, { readAt: Date.now() })));
     },
 });
 

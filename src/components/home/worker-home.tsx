@@ -155,6 +155,56 @@ export function WorkerHome({ user }: { user: any }) {
                 )}
             </section>
 
+            {/* Recent Assignments */}
+            {myTasks.length > 0 && (
+                <section className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                        <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Recent Assignments</h2>
+                        <Link href="/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
+                            View All <ArrowRight size={10} />
+                        </Link>
+                    </div>
+                    <div className="space-y-2">
+                        {[...myTasks]
+                            .sort((a: any, b: any) => (b.assignedAt || 0) - (a.assignedAt || 0))
+                            .slice(0, 3)
+                            .map((task: any) => (
+                                <Link
+                                    key={task._id}
+                                    href={`/assignments/${task._id}`}
+                                    className="flex items-center gap-3 bg-card border rounded-2xl p-4 shadow-sm hover:border-primary/50 transition-colors"
+                                >
+                                    <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                        task.status === "completed" || task.status === "rated"
+                                            ? "bg-emerald-500/10 text-emerald-600"
+                                            : task.status === "in_progress"
+                                                ? "bg-primary/10 text-primary"
+                                                : "bg-amber-500/10 text-amber-600"
+                                    }`}>
+                                        {task.status === "completed" || task.status === "rated" ? (
+                                            <CheckCircle size={16} />
+                                        ) : task.status === "in_progress" ? (
+                                            <PlayCircle size={16} />
+                                        ) : (
+                                            <Clock size={16} />
+                                        )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-bold truncate capitalize">
+                                            {task.serviceType?.replace("_", " ") || "Task"}
+                                            {task.roomNumber ? ` · Room ${task.roomNumber}` : ""}
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground truncate">{task.description}</p>
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground shrink-0">
+                                        {task.status?.replace("_", " ")}
+                                    </span>
+                                </Link>
+                            ))}
+                    </div>
+                </section>
+            )}
+
             {/* Available Tasks Section */}
             {availableTasks.length > 0 && (
                 <section className="space-y-3">

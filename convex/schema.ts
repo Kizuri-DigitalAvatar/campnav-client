@@ -130,6 +130,7 @@ export default defineSchema({
     message: v.string(),
     sentAt: v.optional(v.number()),
     deliveredAt: v.optional(v.number()),
+    readAt: v.optional(v.number()), // when the user saw it in the in-app popup
   }).index("by_userId", ["userId"])
     .index("by_assignmentId", ["assignmentId"])
     .index("by_status", ["status"])
@@ -228,6 +229,14 @@ export default defineSchema({
     type: v.string(), // "image" | "pdf" | "text"
     schedule: v.optional(v.string()), // "daily" | "weekly"
     category: v.optional(v.string()), // e.g. "Food", "Drink"
+    dayOfWeek: v.optional(v.number()), // 0 (Sunday) - 6 (Saturday) for weekly day menus
+    weekStart: v.optional(v.number()), // timestamp of the Sunday this menu week starts
+    items: v.optional(v.array(v.object({
+      name: v.string(),
+      mealType: v.string(), // "breakfast" | "lunch" | "dinner" | "snack" | "drink"
+      description: v.optional(v.string()),
+      image: v.optional(v.string()), // storageId
+    }))),
     uploadedAt: v.number(),
   }),
   activities: defineTable({

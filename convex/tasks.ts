@@ -368,9 +368,42 @@ export const getWorkerAssignments = query({
 });
 
 // Worker acknowledges assignment or picks up unassigned task
+// Notify the resident/guest who made the request about a task status change
+async function notifyRequester(
+    ctx: any,
+    task: any,
+    taskId: any,
+    type: string,
+    message: string
+) {
+    if (!task?.requestId) return;
+    const request = await ctx.db.get(task.requestId);
+    if (!request?.userId) return;
+    await ctx.db.insert("notifications", {
+        userId: request.userId,
+        assignmentId: taskId,
+        requestId: task.requestId,
+        type,
+        channel: "push",
+        status: "pending",
+        message,
+    });
+}
+
+function taskLabel(task: any) {
+    const service = (task?.serviceType || "service").replace("_", " ");
+    return `your ${service} request${task?.roomNumber ? ` (Room ${task.roomNumber})` : ""}`;
+}
+
 export const acknowledgeAssignment = mutation({
     args: { id: v.id("tasks"), staffId: v.optional(v.id("users")) },
     handler: async (ctx, args) => {
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Task not found");
+        // Prevent two staff members claiming the same open task
+        if (args.staffId && existing.staffId && existing.staffId !== args.staffId) {
+            throw new Error("This task has already been taken by another staff member");
+        }
         const patch: any = {
             status: "acknowledged",
             acknowledgedAt: Date.now(),
@@ -389,6 +422,17 @@ export const acknowledgeAssignment = mutation({
         if (assignment?.requestId) {
             await ctx.db.patch(assignment.requestId, { status: "in_progress" });
         }
+
+        // Let the requester know their request was accepted
+        const staffId = args.staffId || assignment?.staffId;
+        const staff = staffId ? await ctx.db.get(staffId) : null;
+        await notifyRequester(
+            ctx,
+            assignment,
+            args.id,
+            "acceptance",
+            `✅ ${(staff as any)?.name || "A staff member"} accepted ${taskLabel(assignment)}.`
+        );
     },
 });
 
@@ -404,6 +448,16 @@ export const startAssignment = mutation({
         if (task?.requestId) {
             await ctx.db.patch(task.requestId, { status: "in_progress" });
         }
+
+        // Let the requester know work has started
+        const staff = task?.staffId ? await ctx.db.get(task.staffId) : null;
+        await notifyRequester(
+            ctx,
+            task,
+            args.id,
+            "progress",
+            `🔧 ${(staff as any)?.name || "A staff member"} started working on ${taskLabel(task)}.`
+        );
     },
 });
 
@@ -564,6 +618,19 @@ export const rateTask = mutation({
             feedback: args.feedback,
             status: "rated",
         });
+
+        // Let the staff member know they received feedback
+        if (assignment.staffId) {
+            const stars = "★".repeat(args.rating) + "☆".repeat(Math.max(0, 5 - args.rating));
+            await ctx.db.insert("notifications", {
+                userId: assignment.staffId,
+                assignmentId: args.id,
+                type: "feedback",
+                channel: "push",
+                status: "delivered",
+                message: `You received ${stars} (${args.rating}/5) for "${assignment.description || assignment.serviceType || "a task"}"${args.feedback ? `: "${args.feedback}"` : ""}`,
+            });
+        }
     },
 });
 

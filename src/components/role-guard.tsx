@@ -31,12 +31,12 @@ export function RoleGuard({
 
 // Helper function to check if user is a worker
 export function isWorker(role?: string): boolean {
-    return ["camp-staff"].includes(role || "")
+    return ["camp-staff", "staff"].includes(role || "")
 }
 
-// Helper function to check if user is camper/visitor
+// Helper function to check if user is camper/visitor/resident
 export function isCamperOrVisitor(role?: string): boolean {
-    return ["camper", "visitor"].includes(role || "")
+    return ["camper", "visitor", "resident"].includes(role || "")
 }
 
 // Helper function to check if user is admin

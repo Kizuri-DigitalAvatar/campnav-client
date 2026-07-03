@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, Grid2X2, Home, User, ClipboardList, History } from "lucide-react"
+import { Bell, Grid2X2, Home, User, ClipboardList, History, Inbox } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
@@ -15,6 +15,7 @@ export function BottomNav() {
         ? [
             { href: "/", label: "Home", icon: Home },
             { href: "/assignments", label: "Tasks", icon: ClipboardList },
+            { href: "/available-tasks", label: "Available", icon: Inbox },
             { href: "/history", label: "History", icon: History },
             { href: "/profile", label: "Profile", icon: User },
         ]
@@ -42,7 +43,7 @@ export function BottomNav() {
 
     return (
         <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t md:hidden">
-            <div className={`grid h-full grid-cols-${navItems.length} mx-auto font-medium`}>
+            <div className={`grid h-full ${navItems.length === 5 ? "grid-cols-5" : "grid-cols-4"} mx-auto font-medium`}>
                 {navItems.map((item) => (
                     <Link
                         key={item.href}

@@ -140,7 +140,7 @@ export const getStats = query({
       return { name, value: count };
     });
 
-    const departments = ["housekeeping", "maintenance", "kitchen", "shop", "electrical"] as const;
+    const departments = ["room_service", "housekeeping", "maintenance", "laundry", "kitchen", "shop", "electrical"] as const;
     const byDepartment = departments.map((dept) => {
       const count = users.filter((u) => u.department === dept).length;
       const name = dept.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -269,7 +269,7 @@ export const createUserWithRole = mutation({
       throw new Error("Department is required for staff roles");
     }
 
-    const validDepartments = ["housekeeping", "maintenance", "kitchen", "shop", "electrical"];
+    const validDepartments = ["room_service", "housekeeping", "maintenance", "laundry", "kitchen", "shop", "electrical"];
     if (args.department && !validDepartments.includes(args.department)) {
       throw new Error("Invalid department specified");
     }
@@ -332,7 +332,7 @@ export const updateUserRole = mutation({
       throw new Error("Department is required for staff roles");
     }
 
-    const validDepartments = ["housekeeping", "maintenance", "kitchen", "shop", "electrical"];
+    const validDepartments = ["room_service", "housekeeping", "maintenance", "laundry", "kitchen", "shop", "electrical"];
     if (args.department && !validDepartments.includes(args.department)) {
       throw new Error("Invalid department specified");
     }
