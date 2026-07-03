@@ -119,6 +119,49 @@ export const list = query({
   },
 });
 
+async function resolveImageUrl(ctx: any, image?: string) {
+  if (!image) return null;
+  if (image.startsWith("http")) return image;
+  try {
+    return await ctx.storage.getUrl(image);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Lightweight profile for admin popups (no password)
+export const getProfile = query({
+  args: { id: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.id);
+    if (!user) return null;
+    const { password, ...safe } = user as any;
+    return { ...safe, imageUrl: await resolveImageUrl(ctx, user.image) };
+  },
+});
+
+// All staff members with their current availability, for assignment pickers
+export const listStaff = query({
+  args: {},
+  handler: async (ctx) => {
+    const staff = (await Promise.all(
+      ["camp-staff", "staff"].map((role) =>
+        ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", role)).collect()
+      )
+    )).flat();
+
+    return Promise.all(staff.map(async (u) => ({
+      _id: u._id,
+      name: u.name,
+      imageUrl: await resolveImageUrl(ctx, u.image),
+      department: u.department,
+      assignedDuties: u.assignedDuties || [],
+      isOnSite: u.isOnSite || false,
+      available: !u.currentTaskId,
+    })));
+  },
+});
+
 export const listAll = query({
   args: {},
   handler: async (ctx) => {

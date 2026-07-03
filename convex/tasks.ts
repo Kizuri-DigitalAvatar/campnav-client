@@ -2,6 +2,52 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
+// Full task view for a request: assigned staff, stage timestamps, updates, feedback
+export const getByRequest = query({
+    args: { requestId: v.id("requests") },
+    handler: async (ctx, args) => {
+        const tasks = await ctx.db.query("tasks").collect();
+        const task = tasks.find((t) => t.requestId === args.requestId);
+        if (!task) return null;
+
+        const resolveUrl = async (storageId?: string) => {
+            if (!storageId) return null;
+            try {
+                return await ctx.storage.getUrl(storageId);
+            } catch {
+                return null;
+            }
+        };
+
+        let staff = null;
+        if (task.staffId) {
+            const s = await ctx.db.get(task.staffId);
+            if (s) {
+                staff = {
+                    _id: s._id,
+                    name: s.name,
+                    imageUrl: s.image
+                        ? (s.image.startsWith("http") ? s.image : await resolveUrl(s.image))
+                        : null,
+                    department: s.department,
+                    assignedDuties: s.assignedDuties || [],
+                    isOnSite: s.isOnSite || false,
+                };
+            }
+        }
+
+        const updates = await Promise.all(
+            (task.updates || []).map(async (update) => ({
+                ...update,
+                imageUrls: (await Promise.all((update.images || []).map(resolveUrl))).filter(Boolean),
+                audioUrl: await resolveUrl(update.audio),
+            }))
+        );
+
+        return { ...task, staff, updates };
+    },
+});
+
 // Assign a staff member to an existing request's task
 export const assignStaffToRequest = mutation({
     args: {
