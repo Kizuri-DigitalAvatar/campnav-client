@@ -413,6 +413,47 @@ export const getWorkerAssignments = query({
     },
 });
 
+// All pending tasks nobody has accepted yet — visible to every staff member.
+// Auto-assignment at request creation is only a suggestion; until a staff
+// member acknowledges, any staff can claim the task from this board.
+export const getOpenTasks = query({
+    args: {},
+    handler: async (ctx) => {
+        const pendingTasks = await ctx.db
+            .query("tasks")
+            .withIndex("by_status", (q) => q.eq("status", "pending"))
+            .collect();
+
+        pendingTasks.sort((a, b) => b.assignedAt - a.assignedAt);
+
+        return Promise.all(
+            pendingTasks.map(async (a) => {
+                let requestDetails = null;
+                if (a.requestId) {
+                    const req = await ctx.db.get(a.requestId);
+                    if (req) {
+                        let imageUrl = null;
+                        if (req.image) {
+                            try {
+                                imageUrl = await ctx.storage.getUrl(req.image);
+                            } catch (e) {
+                                imageUrl = null;
+                            }
+                        }
+                        requestDetails = {
+                            description: req.description,
+                            priority: req.priority,
+                            imageUrl
+                        };
+                    }
+                }
+
+                return { ...a, requestDetails };
+            })
+        );
+    },
+});
+
 // Worker acknowledges assignment or picks up unassigned task
 // Notify the resident/guest who made the request about a task status change
 async function notifyRequester(
@@ -446,9 +487,17 @@ export const acknowledgeAssignment = mutation({
     handler: async (ctx, args) => {
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Task not found");
-        // Prevent two staff members claiming the same open task
         if (args.staffId && existing.staffId && existing.staffId !== args.staffId) {
-            throw new Error("This task has already been taken by another staff member");
+            // A task is only "taken" once someone accepts it. Auto-assignment
+            // at creation is a suggestion, so pending tasks stay claimable.
+            if (existing.status !== "pending") {
+                throw new Error("This task has already been taken by another staff member");
+            }
+            // Free the previously suggested staff member
+            const prev = await ctx.db.get(existing.staffId);
+            if ((prev as any)?.currentTaskId === args.id) {
+                await ctx.db.patch(existing.staffId, { currentTaskId: undefined });
+            }
         }
         const patch: any = {
             status: "acknowledged",

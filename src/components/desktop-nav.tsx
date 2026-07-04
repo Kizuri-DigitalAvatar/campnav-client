@@ -1,16 +1,19 @@
 "use client"
 
 import Link from "next/link"
+import { useState } from "react"
 import { usePathname } from "next/navigation"
 import { Bell, Grid2X2, Home, User, LayoutDashboard, ClipboardList, History, Inbox } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "@/components/mode-toggle"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
+import { ContactSupportDialog } from "@/components/contact-support-dialog"
 
 export function DesktopNav() {
     const pathname = usePathname()
     const { user, loading } = useAuth()
+    const [supportOpen, setSupportOpen] = useState(false)
 
     const navItems = user && isWorker(user.role)
         ? [
@@ -75,11 +78,16 @@ export function DesktopNav() {
                 </div>
                 <div className="tile-3d rounded-2xl p-4">
                     <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">Visitor Support</p>
-                    <button className="w-full py-2 bg-card border rounded-lg text-xs font-medium hover:bg-muted transition-colors">
-                        Contact Staff
+                    <button
+                        onClick={() => setSupportOpen(true)}
+                        className="w-full py-2 bg-card border rounded-lg text-xs font-medium hover:bg-muted transition-colors"
+                    >
+                        Contact Support
                     </button>
                 </div>
             </div>
+
+            <ContactSupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
         </aside>
     )
 }

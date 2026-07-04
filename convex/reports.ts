@@ -1,6 +1,42 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
+import { api } from "./_generated/api";
+
+// Resident/guest "Contact Support" message: lands in the admin Reports tab
+// and pings every admin's notification bell live
+export const submitSupportMessage = mutation({
+    args: {
+        userId: v.id("users"),
+        message: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const message = args.message.trim();
+        if (!message) throw new Error("Message cannot be empty");
+
+        const user = await ctx.db.get(args.userId);
+        const userName = user?.name || "A guest";
+        const room = (user as any)?.roomNumber ? ` (Room ${(user as any).roomNumber})` : "";
+
+        const reportId = await ctx.db.insert("reports", {
+            userId: args.userId,
+            type: "support",
+            title: `Support message from ${userName}${room}`,
+            message,
+            status: "unread",
+            createdAt: Date.now(),
+        });
+
+        // Live notification for admins
+        await ctx.runMutation(api.notifications.sendRoleNotification, {
+            role: "admin",
+            type: "support",
+            message: `💬 ${userName}${room}: "${message.slice(0, 180)}${message.length > 180 ? "..." : ""}"`,
+        });
+
+        return reportId;
+    },
+});
 
 export const create = mutation({
     args: {
