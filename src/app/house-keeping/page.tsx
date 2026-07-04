@@ -3,7 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, ChevronDown } from "lucide-react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { useRouter } from "next/navigation"
 
 import { Card } from "@/components/ui/card"

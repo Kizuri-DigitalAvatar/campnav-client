@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { useQuery } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../convex/_generated/api"
 import { Card } from "@/components/ui/card"
 import { List, Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Megaphone } from "lucide-react"

@@ -28,7 +28,7 @@ export function BottomNav() {
 
     if (loading) {
         return (
-            <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t md:hidden">
+            <div className="fixed bottom-0 left-0 z-50 w-full h-16 glass-panel border-t border-x-0 border-b-0 md:hidden">
                 <div className="grid h-full grid-cols-4 mx-auto">
                     {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="flex flex-col items-center justify-center gap-1.5">
@@ -42,7 +42,7 @@ export function BottomNav() {
     }
 
     return (
-        <div className="fixed bottom-0 left-0 z-50 w-full h-16 bg-background border-t md:hidden">
+        <div className="fixed bottom-0 left-0 z-50 w-full h-16 glass-panel border-t border-x-0 border-b-0 md:hidden">
             <div className={`grid h-full ${navItems.length === 5 ? "grid-cols-5" : "grid-cols-4"} mx-auto font-medium`}>
                 {navItems.map((item) => (
                     <Link

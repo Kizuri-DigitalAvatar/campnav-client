@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DesktopNav } from "@/components/desktop-nav";
@@ -19,6 +20,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const nexa = localFont({
+  src: [
+    { path: "../../public/nexa/Nexa-ExtraLight.ttf", weight: "100 300", style: "normal" },
+    { path: "../../public/nexa/Nexa-Heavy.ttf", weight: "400 900", style: "normal" },
+  ],
+  variable: "--font-nexa",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "CAMPNAV",
   description: "Your camping navigation companion",
@@ -34,7 +44,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4f46e5",
+  themeColor: "#f7f6f2",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -50,7 +60,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased selection:bg-primary/30`}
+        className={`${geistSans.variable} ${geistMono.variable} ${nexa.variable} antialiased selection:bg-primary/25`}
         suppressHydrationWarning
       >
         <ThemeProvider
@@ -66,7 +76,7 @@ export default function RootLayout({
                 <DesktopNav />
 
                 <div className="flex-1 flex flex-col">
-                  <main className="flex-1 flex justify-center overflow-y-auto">
+                  <main className="flex-1 flex justify-center overflow-y-auto dot-grid">
                     <div className="w-full max-w-[400px] md:max-w-7xl px-4 py-4 md:pb-8">
                       {/* AuthGuard run on the client to gate access */}
                       <ClientLayout>

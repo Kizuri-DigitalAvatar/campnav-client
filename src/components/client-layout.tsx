@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { AuthGuard } from "@/components/auth-guard"
 import { NotificationListener } from "@/components/notification-listener"
+import { DataPrefetcher } from "@/components/data-prefetcher"
 import { Header } from "@/components/header"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
@@ -45,6 +46,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return (
         <>
             <NotificationListener />
+            {user && <DataPrefetcher />}
             <NavigationWrapper />
             <AuthGuard>{isBlockedForStaff ? null : children}</AuthGuard>
         </>

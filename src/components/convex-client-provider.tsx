@@ -2,6 +2,7 @@
 
 import { ReactNode, useMemo } from "react";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
 
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
@@ -24,5 +25,13 @@ export default function ConvexClientProvider({
     return <>{children}</>;
   }
 
-  return <ConvexProvider client={convex!}>{children}</ConvexProvider>;
+  return (
+    <ConvexProvider client={convex!}>
+      {/* Keeps query subscriptions warm for 5 min after a page unmounts,
+          so navigating back renders instantly from cache (still live) */}
+      <ConvexQueryCacheProvider expiration={300_000} maxIdleEntries={150}>
+        {children}
+      </ConvexQueryCacheProvider>
+    </ConvexProvider>
+  );
 }

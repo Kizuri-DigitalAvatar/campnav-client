@@ -3,7 +3,8 @@
 import { FormEvent, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CalendarClock, Plane } from "lucide-react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"

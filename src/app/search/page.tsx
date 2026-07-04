@@ -2,7 +2,7 @@
 
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { useQuery } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../convex/_generated/api"
 import { Search, Package, Megaphone, Calendar, ArrowLeft, Clock, MapPin } from "lucide-react"
 import Link from "next/link"

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../convex/_generated/api"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"

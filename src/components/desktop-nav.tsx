@@ -28,9 +28,9 @@ export function DesktopNav() {
         ]
 
     return (
-        <aside className="hidden md:flex flex-col w-64 border-r bg-card/50 backdrop-blur-xl h-screen sticky top-0">
+        <aside className="hidden md:flex flex-col w-64 glass-panel border-r border-y-0 border-l-0 shadow-card h-screen sticky top-0">
             <div className="p-6 mb-4 flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                <div className="w-10 h-10 rounded-xl tile-3d-primary flex items-center justify-center">
                     <LayoutDashboard size={18} className="text-primary-foreground" />
                 </div>
                 <h1 className="text-xl font-bold tracking-tight">CAMPNAV</h1>
@@ -52,10 +52,10 @@ export function DesktopNav() {
                             key={item.name}
                             href={item.href}
                             className={cn(
-                                "flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group",
+                                "flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group",
                                 pathname === item.href
-                                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/10"
-                                    : "text-muted-foreground hover:bg-muted"
+                                    ? "bg-primary text-primary-foreground shadow-primary-glow"
+                                    : "text-muted-foreground hover:bg-muted hover:translate-x-0.5"
                             )}
                         >
                             <item.icon size={18} className={cn(
@@ -73,9 +73,9 @@ export function DesktopNav() {
                     <span className="text-xs font-medium text-muted-foreground">Appearance</span>
                     <ModeToggle />
                 </div>
-                <div className="bg-muted/50 rounded-2xl p-4 border border-border/50">
+                <div className="tile-3d rounded-2xl p-4">
                     <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">Visitor Support</p>
-                    <button className="w-full py-2 bg-background border rounded-lg text-xs font-medium hover:bg-muted transition-colors">
+                    <button className="w-full py-2 bg-card border rounded-lg text-xs font-medium hover:bg-muted transition-colors">
                         Contact Staff
                     </button>
                 </div>

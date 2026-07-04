@@ -11,7 +11,7 @@ import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
 import { NotificationBell } from "@/components/notification-bell"
 import { cn } from "@/lib/utils"
-import { useQuery } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../convex/_generated/api"
 
 export function Header() {
@@ -79,11 +79,11 @@ export function Header() {
 
     return (
         <>
-            <header className="fixed top-0 inset-x-0 md:left-64 z-30 bg-background/80 backdrop-blur-md border-b">
+            <header className="fixed top-0 inset-x-0 md:left-64 z-30 glass-panel border-b border-t-0 border-x-0">
                 <div className="container flex items-center justify-between h-16 px-4 mx-auto md:px-6">
                     {/* Left: Logo */}
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground font-bold">
+                        <div className="flex items-center justify-center w-9 h-9 rounded-xl tile-3d-primary text-primary-foreground font-extrabold text-sm">
                             CN
                         </div>
                         <span className="text-lg font-bold tracking-tight hidden md:inline-block">CAMPNAV</span>
@@ -170,11 +170,11 @@ export function Header() {
                 <div className="fixed inset-0 z-40 md:hidden">
                     {/* Backdrop */}
                     <div
-                        className="fixed inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+                        className="fixed inset-0 bg-foreground/25 backdrop-blur-md animate-in fade-in duration-300"
                         onClick={() => setIsMenuOpen(false)}
                     />
                     {/* Sidebar */}
-                    <div className="fixed inset-y-0 right-0 w-3/4 max-w-sm bg-background border-l shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
+                    <div className="fixed inset-y-0 right-0 w-3/4 max-w-sm glass-panel shadow-pop flex flex-col animate-in slide-in-from-right duration-300">
                         <div className="flex items-center justify-between p-4 border-b">
                             <span className="text-xl font-bold">Menu</span>
                             <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>

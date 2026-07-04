@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { useAuth } from "@/components/auth-provider"
 import { api } from "../../convex/_generated/api"
 import { QuickAccessGrid } from "@/components/home/quick-access-grid"

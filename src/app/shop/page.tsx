@@ -3,7 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Search, ShoppingBag, ShoppingCart, X, Home } from "lucide-react"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"

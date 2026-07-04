@@ -1,7 +1,8 @@
 "use client"
 
 import { useAuth } from "@/components/auth-provider"
-import { useMutation, useQuery } from "convex/react"
+import { useMutation } from "convex/react"
+import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../convex/_generated/api"
 import { Card } from "@/components/ui/card"
 import { ShoppingBag, Clock, ChevronRight, ClipboardList, XCircle, UploadCloud, Image as ImageIcon, Trash2 } from "lucide-react"
