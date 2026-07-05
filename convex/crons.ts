@@ -24,4 +24,12 @@ crons.interval(
     internal.cron.checkUnrespondedRequests
 );
 
+// Saturday reminder (menu week runs Sunday-Saturday): admins set next week's
+// meal menu, residents review it and select their meals
+crons.weekly(
+    "weekly meal menu reminders",
+    { dayOfWeek: "saturday", hourUTC: 9, minuteUTC: 0 },
+    internal.menus.sendWeeklyMenuReminders
+);
+
 export default crons;

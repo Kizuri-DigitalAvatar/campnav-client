@@ -1,5 +1,6 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 export const list = query({
     args: { category: v.optional(v.string()) },
@@ -67,6 +68,54 @@ function itemsToText(items: MenuItem[]) {
         })
         .join("\n\n");
 }
+
+// Runs every Saturday (day before the Sunday–Saturday menu week rolls over).
+// Reminds admins to set next week's meal menu (or keep the current one) and
+// residents to review it and pick their meals.
+export const sendWeeklyMenuReminders = internalMutation({
+    args: {},
+    handler: async (ctx) => {
+        const now = Date.now();
+        const DAY = 24 * 60 * 60 * 1000;
+        const WEEK = 7 * DAY;
+
+        const dayMenus = (await ctx.db.query("menus").collect()).filter(
+            (m) => m.dayOfWeek !== undefined && m.weekStart !== undefined
+        );
+
+        const hasCurrentWeek = dayMenus.some(
+            (m) => m.weekStart! <= now && now < m.weekStart! + WEEK
+        );
+        // A menu whose week starts within the next 8 days = next week is already set
+        const hasNextWeek = dayMenus.some(
+            (m) => m.weekStart! > now && m.weekStart! <= now + 8 * DAY
+        );
+
+        // Admins: only nag if next week's menu isn't set yet
+        if (!hasNextWeek) {
+            await ctx.runMutation(api.notifications.sendRoleNotification, {
+                role: "admin",
+                type: "reminder",
+                message:
+                    "⏰ The weekly meal menu expires tomorrow. Set next week's menu under Room Service → Menus, or re-save the current one to keep it.",
+            });
+        }
+
+        // Residents/guests: remind them to review the menu and pick their meals
+        if (hasCurrentWeek || hasNextWeek) {
+            await ctx.runMutation(api.notifications.sendRoleNotification, {
+                role: "camper",
+                type: "reminder",
+                message: hasNextWeek
+                    ? "🍽️ This week's meal menu ends tomorrow. The new weekly menu is ready — review it and select your meals for the coming week."
+                    : "🍽️ This week's meal menu ends tomorrow. Check the menu page to pick your meals for the new week, or keep your usual choices.",
+            });
+        }
+
+        // Deliver emails right away
+        await ctx.scheduler.runAfter(0, api.notifications.processEmailNotifications, {});
+    },
+});
 
 export const getWeek = query({
     args: { weekStart: v.number() },
