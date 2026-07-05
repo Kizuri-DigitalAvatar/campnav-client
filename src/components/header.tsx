@@ -16,7 +16,7 @@ import { api } from "../../convex/_generated/api"
 
 export function Header() {
     const { user } = useAuth()
-    const userOrders = useQuery(api.orders.listForUser, user ? { userId: user._id } : "skip")
+    const userOrders = useQuery(api.orders.listForUser, user && !isWorker(user.role) ? { userId: user._id } : "skip")
     const cartCount = useMemo(() => {
         if (!userOrders) return 0
         return userOrders
@@ -129,20 +129,22 @@ export function Header() {
                     {/* Right: Notifications + Burger Menu + Profile */}
                     <div className="flex items-center gap-2">
                         <NotificationBell />
-                        {/* Burger Menu Button (Mobile Only) */}
-                        <Link
-                            href="/history"
-                            className="relative md:hidden h-10 w-10 rounded-full border bg-card flex items-center justify-center hover:border-primary/60 hover:text-primary transition-colors active:scale-95"
-                            aria-label="My orders"
-                            title="My orders"
-                        >
-                            <ShoppingCart className="h-5 w-5" />
-                            {cartCount > 0 && (
-                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                                    {cartCount}
-                                </span>
-                            )}
-                        </Link>
+                        {/* My Orders cart — guests/residents only (staff don't place orders) */}
+                        {user && !userIsWorker && (
+                            <Link
+                                href="/history"
+                                className="relative md:hidden h-10 w-10 rounded-full border bg-card flex items-center justify-center hover:border-primary/60 hover:text-primary transition-colors active:scale-95"
+                                aria-label="My orders"
+                                title="My orders"
+                            >
+                                <ShoppingCart className="h-5 w-5" />
+                                {cartCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
+                                        {cartCount}
+                                    </span>
+                                )}
+                            </Link>
+                        )}
                         <Button
                             variant="ghost"
                             size="icon"

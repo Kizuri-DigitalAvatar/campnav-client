@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Search, ShoppingBag, ShoppingCart, X, Home } from "lucide-react"
 import { useMutation } from "convex/react"
@@ -25,13 +25,46 @@ export default function ShopPage() {
 
   const [activeFilter, setActiveFilter] = useState<string>("all")
   const [query, setQuery] = useState("")
-  const roomNumber = user?.roomNumber || ""
+  // Manual room number entry, prefilled from the profile when available
+  const [roomNumber, setRoomNumber] = useState("")
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showRoomNumberModal, setShowRoomNumberModal] = useState(false)
+  const [pendingProduct, setPendingProduct] = useState<any>(null)
+
+  useEffect(() => {
+    if (user?.roomNumber) setRoomNumber((current) => current || user.roomNumber!)
+  }, [user?.roomNumber])
 
   const products = useQuery(api.products.list, { category: activeFilter }) ?? []
   const myOrders = useQuery(api.orders.listForUser, user ? { userId: user._id } : "skip") ?? []
+
+  const placeShopOrder = async (product: any, room: string) => {
+    if (!user) return
+    const existing = myOrders.find((o: any) =>
+      o.source === "shop" &&
+      o.summary === product.name &&
+      (o.status === "pending" || o.status === "in_progress")
+    )
+    if (existing) {
+      const updated = await incrementOrder({
+        orderId: existing._id,
+        amount: 1,
+        unitPrice: product.price,
+      })
+      const newQty = updated?.quantity ?? (existing.quantity ?? 1) + 1
+      alert(`Quantity updated to ${newQty}`)
+      return
+    }
+    await createOrder({
+      userId: user._id,
+      source: "shop",
+      roomNumber: room.trim() || undefined,
+      summary: product.name,
+      total: product.price,
+    })
+    alert("Order placed successfully!")
+  }
 
   const visibleProducts = products.filter((product: any) => {
     if (!product.isAvailable) return false
@@ -133,36 +166,12 @@ export default function ShopPage() {
                 onClick={async (e) => {
                   e.stopPropagation()
                   if (!user) return
-                  const existing = myOrders.find((o: any) =>
-                    o.source === "shop" &&
-                    o.summary === product.name &&
-                    (o.status === "pending" || o.status === "in_progress")
-                  )
-
                   if (!roomNumber.trim()) {
+                    setPendingProduct(product)
                     setShowRoomNumberModal(true)
                     return
                   }
-
-                  if (existing) {
-                    const updated = await incrementOrder({
-                      orderId: existing._id,
-                      amount: 1,
-                      unitPrice: product.price,
-                    })
-                    const newQty = updated?.quantity ?? (existing.quantity ?? 1) + 1
-                    alert(`Quantity updated to ${newQty}`)
-                    return
-                  }
-
-                  await createOrder({
-                    userId: user._id,
-                    source: "shop",
-                    roomNumber: roomNumber || undefined,
-                    summary: product.name,
-                    total: product.price,
-                  })
-                  alert("Order placed successfully!")
+                  await placeShopOrder(product, roomNumber)
                 }}
                 className="w-full rounded-full bg-primary py-1.5 text-[11px] font-semibold text-primary-foreground disabled:opacity-50 mt-1 transition-all transform active:scale-95 shadow-md shadow-primary/20"
               >
@@ -214,35 +223,13 @@ export default function ShopPage() {
                   disabled={isSubmitting}
                   onClick={async () => {
                     if (!roomNumber.trim()) {
+                      setPendingProduct(selectedProduct)
                       setShowRoomNumberModal(true)
                       return
                     }
                     setIsSubmitting(true)
                     try {
-                      const existing = myOrders.find((o: any) =>
-                        o.source === "shop" &&
-                        o.summary === selectedProduct.name &&
-                        (o.status === "pending" || o.status === "in_progress")
-                      )
-
-                      if (existing) {
-                        const updated = await incrementOrder({
-                          orderId: existing._id,
-                          amount: 1,
-                          unitPrice: selectedProduct.price,
-                        })
-                        const newQty = updated?.quantity ?? (existing.quantity ?? 1) + 1
-                        alert(`Quantity updated to ${newQty}`)
-                      } else {
-                        await createOrder({
-                          userId: user!._id,
-                          source: "shop",
-                          roomNumber: roomNumber || undefined,
-                          summary: selectedProduct.name,
-                          total: selectedProduct.price,
-                        })
-                        alert("Order placed successfully!")
-                      }
+                      await placeShopOrder(selectedProduct, roomNumber)
                       setSelectedProduct(null)
                     } catch (err) {
                       console.error(err)
@@ -260,32 +247,53 @@ export default function ShopPage() {
           </Card>
         </div>
       )}
-      {/* Room Number Missing Modal */}
+      {/* Room Number Entry Modal */}
       {showRoomNumberModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <Card className="w-full max-w-sm rounded-[2.5rem] border-4 p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="h-20 w-20 rounded-[1.5rem] bg-amber-500/10 flex items-center justify-center text-amber-500 mx-auto">
+            <div className="h-20 w-20 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary mx-auto">
               <Home className="h-10 w-10" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-2xl font-black uppercase italic tracking-tighter">Room Number Needed</h3>
+              <h3 className="text-2xl font-black uppercase italic tracking-tighter">Where to?</h3>
               <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                We need your room number to deliver your order. Please add it in Settings.
+                Enter your room number so we know where to deliver your order.
               </p>
             </div>
+            <input
+              autoFocus
+              type="text"
+              value={roomNumber}
+              onChange={(e) => setRoomNumber(e.target.value)}
+              placeholder="e.g. B-204"
+              className="w-full h-14 rounded-2xl border border-input bg-card px-4 text-center text-lg font-bold tracking-widest shadow-[inset_0_1px_2px_rgb(16_24_40_/_0.04)] placeholder:text-muted-foreground/50 placeholder:font-medium focus:outline-none focus:border-ring focus:ring-4 focus:ring-ring/15 transition-all"
+            />
             <div className="flex flex-col gap-3">
-              <Link 
-                href="/settings"
-                className="h-14 w-full bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center shadow-lg shadow-primary/20 active:scale-95 transition-all"
-                onClick={() => setShowRoomNumberModal(false)}
+              <button
+                disabled={!roomNumber.trim()}
+                onClick={async () => {
+                  setShowRoomNumberModal(false)
+                  const product = pendingProduct
+                  setPendingProduct(null)
+                  if (product) {
+                    try {
+                      await placeShopOrder(product, roomNumber)
+                      setSelectedProduct(null)
+                    } catch (err) {
+                      console.error(err)
+                      alert("Failed to place order.")
+                    }
+                  }
+                }}
+                className="h-14 w-full bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50"
               >
-                Go to Settings
-              </Link>
-              <button 
-                onClick={() => setShowRoomNumberModal(false)}
+                Confirm & Order
+              </button>
+              <button
+                onClick={() => { setShowRoomNumberModal(false); setPendingProduct(null) }}
                 className="h-14 w-full bg-muted text-muted-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all"
               >
-                Close
+                Cancel
               </button>
             </div>
           </Card>

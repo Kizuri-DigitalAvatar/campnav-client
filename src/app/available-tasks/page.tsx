@@ -17,8 +17,8 @@ export default function AvailableTasksPage() {
     const [selectedAssignmentId, setSelectedAssignmentId] = useState<Id<"tasks"> | null>(null)
 
     const assignments = useQuery(
-        api.tasks.getWorkerAssignments,
-        user && isWorker(user.role) ? { workerId: user._id } : "skip"
+        api.tasks.getOpenTasks,
+        user && isWorker(user.role) ? {} : "skip"
     )
 
     const acknowledgeAssignment = useMutation(api.tasks.acknowledgeAssignment)
@@ -44,8 +44,9 @@ export default function AvailableTasksPage() {
         )
     }
 
-    // Open tasks: pending and not yet claimed by anyone
-    const availableTasks = (assignments || []).filter((a: any) => !a.staffId && a.status === "pending")
+    // Every pending request that no staff member has accepted yet.
+    // Auto-assigned tasks stay claimable by anyone until someone responds.
+    const availableTasks = assignments || []
 
     const handleClaim = async (id: Id<"tasks">) => {
         try {

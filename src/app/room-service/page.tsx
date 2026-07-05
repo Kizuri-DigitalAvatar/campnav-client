@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, ShoppingCart, Info, FileText, ChevronRight, Loader2, Home, ExternalLink, Trash2 } from "lucide-react"
 import { useMutation } from "convex/react"
@@ -19,7 +19,8 @@ export default function RoomServicePage() {
   const menus = useQuery(api.menus.list, {})
   const [cart, setCart] = useState<{ id: Id<"products">; count: number }[]>([])
   const [activeTab, setActiveTab] = useState<"menu" | "order">("menu")
-  const roomNumber = user?.roomNumber || ""
+  // Manual room number entry, prefilled from the profile when available
+  const [roomNumber, setRoomNumber] = useState("")
   const [showRoomNumberModal, setShowRoomNumberModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -31,6 +32,10 @@ export default function RoomServicePage() {
 
   const createOrder = useMutation(api.orders.create)
   const removeMenu = useMutation(api.menus.remove)
+
+  useEffect(() => {
+    if (user?.roomNumber) setRoomNumber((current) => current || user.roomNumber!)
+  }, [user?.roomNumber])
 
   const activeMenus = useMemo(() => {
     if (!menus) return []
@@ -53,8 +58,13 @@ export default function RoomServicePage() {
     })
   }, [menus])
 
-  const handleOrder = async () => {
-    if (!user || !roomNumber.trim() || cart.length === 0) return
+  const handleOrder = async (room?: string) => {
+    const deliverTo = (room ?? roomNumber).trim()
+    if (!user || cart.length === 0) return
+    if (!deliverTo) {
+      setShowRoomNumberModal(true)
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -68,7 +78,7 @@ export default function RoomServicePage() {
       await createOrder({
         userId: user._id,
         source: "room_service",
-        roomNumber: roomNumber.trim(),
+        roomNumber: deliverTo,
         summary: summary,
         total: cart.reduce((sum, item) => {
           const p = products?.find((p) => p._id === item.id)
@@ -231,10 +241,6 @@ export default function RoomServicePage() {
                   <div className="p-4 border-t bg-background flex items-center justify-center">
                     <button
                       onClick={() => {
-                        if (!roomNumber.trim()) {
-                          setShowRoomNumberModal(true)
-                          return
-                        }
                         setRequestMenu(menu)
                         setRequestNote(menu.type === "text" ? menu.name : "")
                       }}
@@ -300,10 +306,6 @@ export default function RoomServicePage() {
                           disabled={(item.stock ?? 0) <= 0}
                           onClick={(e) => {
                             e.stopPropagation()
-                            if (!roomNumber.trim()) {
-                               setShowRoomNumberModal(true)
-                               return
-                            }
                             setCart(prev => {
                               const existing = prev.find(i => i.id === item._id)
                               if (existing) return prev.map(i => i.id === item._id ? { ...i, count: i.count + 1 } : i)
@@ -328,7 +330,7 @@ export default function RoomServicePage() {
       {cart.length > 0 && activeTab === "order" && (
         <div className="fixed bottom-6 left-6 right-6 md:max-w-xl md:mx-auto animate-in slide-in-from-bottom-10 duration-500">
           <button
-            onClick={handleOrder}
+            onClick={() => handleOrder()}
             disabled={isSubmitting}
             className="w-full bg-primary text-primary-foreground h-16 rounded-[2rem] font-black uppercase tracking-widest text-xs flex items-center justify-between px-8 shadow-2xl shadow-primary/40 border-t-4 border-white/20 active:scale-[0.98] transition-all"
           >
@@ -389,10 +391,6 @@ export default function RoomServicePage() {
                 
                 <button
                   onClick={() => {
-                    if (!roomNumber.trim()) {
-                      setShowRoomNumberModal(true)
-                      return
-                    }
                     setCart(prev => {
                       const existing = prev.find(i => i.id === selectedProduct._id)
                       if (existing) return prev.map(i => i.id === selectedProduct._id ? { ...i, count: i.count + 1 } : i)
@@ -409,31 +407,43 @@ export default function RoomServicePage() {
           </Card>
         </div>
       )}
-      {/* Room Number Missing Modal */}
+      {/* Room Number Entry Modal */}
       {showRoomNumberModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <Card className="w-full max-w-sm rounded-[2.5rem] border-4 p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="h-20 w-20 rounded-[1.5rem] bg-amber-500/10 flex items-center justify-center text-amber-500 mx-auto">
+            <div className="h-20 w-20 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary mx-auto">
               <Home className="h-10 w-10" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className="text-2xl font-black uppercase italic tracking-tighter">Room Number Missing</h3>
+              <h3 className="text-2xl font-black uppercase italic tracking-tighter">Where to?</h3>
               <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                We need to know where to deliver your delicious order! Please set your room number for a seamless stay.
+                Enter your room number so we know where to deliver your order.
               </p>
             </div>
+            <input
+              autoFocus
+              type="text"
+              value={roomNumber}
+              onChange={(e) => setRoomNumber(e.target.value)}
+              placeholder="e.g. B-204"
+              className="w-full h-14 rounded-2xl border border-input bg-card px-4 text-center text-lg font-bold tracking-widest shadow-[inset_0_1px_2px_rgb(16_24_40_/_0.04)] placeholder:text-muted-foreground/50 placeholder:font-medium focus:outline-none focus:border-ring focus:ring-4 focus:ring-ring/15 transition-all"
+            />
             <div className="flex flex-col gap-3">
-              <Link 
-                href="/settings"
-                className="h-14 w-full bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center shadow-lg shadow-primary/20 active:scale-95 transition-all"
+              <button
+                disabled={!roomNumber.trim()}
+                onClick={() => {
+                  setShowRoomNumberModal(false)
+                  handleOrder(roomNumber)
+                }}
+                className="h-14 w-full bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-50"
               >
-                Go to Settings
-              </Link>
-              <button 
+                Confirm & Checkout
+              </button>
+              <button
                 onClick={() => setShowRoomNumberModal(false)}
                 className="h-14 w-full bg-muted text-muted-foreground rounded-2xl font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all"
               >
-                Close
+                Cancel
               </button>
             </div>
           </Card>
@@ -457,6 +467,16 @@ export default function RoomServicePage() {
               </button>
             </div>
             <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground">Room Number</label>
+              <input
+                type="text"
+                value={roomNumber}
+                onChange={(e) => setRoomNumber(e.target.value)}
+                placeholder="e.g. B-204"
+                className="w-full h-11 rounded-xl border border-border bg-card text-sm px-3 font-semibold focus-visible:ring-2 focus-visible:ring-primary/30 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-xs font-semibold text-muted-foreground">Notes (optional)</label>
               <textarea
                 value={requestNote}
@@ -467,11 +487,7 @@ export default function RoomServicePage() {
             </div>
             <Button
               onClick={async () => {
-                if (!user) return
-                if (!roomNumber.trim()) {
-                  setShowRoomNumberModal(true)
-                  return
-                }
+                if (!user || !roomNumber.trim()) return
                 setIsRequesting(true)
                 try {
                   await createOrder({
@@ -491,7 +507,7 @@ export default function RoomServicePage() {
                   setIsRequesting(false)
                 }
               }}
-              disabled={isRequesting}
+              disabled={isRequesting || !roomNumber.trim()}
               className="w-full rounded-xl"
             >
               {isRequesting ? "Submitting..." : "Submit Request"}

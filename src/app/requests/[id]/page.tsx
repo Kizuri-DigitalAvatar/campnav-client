@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { useParams, useRouter } from "next/navigation"
@@ -7,11 +8,13 @@ import { api } from "../../../../convex/_generated/api"
 import { Id } from "../../../../convex/_generated/dataModel"
 import {
     ArrowLeft, Clock, CheckCircle2, PlayCircle, AlertCircle,
-    MapPin, FileText, User, Users, ShieldAlert, Star
+    MapPin, FileText, User, Users, ShieldAlert, Star, X, Loader2
 } from "lucide-react"
 import Link from "next/link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
+
+const RATING_LABELS = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"]
 
 const STATUS_STYLES: Record<string, string> = {
     pending: "bg-blue-500/10 text-blue-600 border-blue-500/20",
@@ -33,6 +36,40 @@ export default function RequestDetailPage() {
     const router = useRouter()
     const request = useQuery(api.requests.getWithTaskDetails, { id: id as Id<"requests"> })
     const createReport = useMutation(api.reports.create)
+    const confirmCompletion = useMutation(api.tasks.camperConfirmCompletion)
+    const rateTask = useMutation(api.tasks.rateTask)
+
+    const [isRatingOpen, setIsRatingOpen] = useState(false)
+    const [rating, setRating] = useState(0)
+    const [hoverRating, setHoverRating] = useState(0)
+    const [feedback, setFeedback] = useState("")
+    const [isSubmittingRating, setIsSubmittingRating] = useState(false)
+
+    const handleSubmitRating = async () => {
+        const taskId = request?.taskDetails?._id
+        if (!taskId || rating === 0) return
+        setIsSubmittingRating(true)
+        try {
+            // Rating requires the camper to have confirmed completion first
+            if (!request.taskDetails?.camperConfirmedAt) {
+                await confirmCompletion({ id: taskId })
+            }
+            await rateTask({
+                id: taskId,
+                rating,
+                feedback: feedback.trim() || undefined,
+            })
+            setIsRatingOpen(false)
+            toast.success("Thank you for your feedback!", {
+                description: `You rated ${request.taskDetails?.staffName || "the staff"} ${rating}/5 stars.`,
+            })
+        } catch (error) {
+            console.error(error)
+            toast.error("Could not submit your review", { description: "Please try again." })
+        } finally {
+            setIsSubmittingRating(false)
+        }
+    }
 
     const handleReport = async () => {
         if (!request) return
@@ -282,15 +319,98 @@ export default function RequestDetailPage() {
                 </div>
             )}
 
-            {/* Action for uncompleted task */}
-            {request.status === "completed" && (
-                <Link
-                    href={`/history`}
-                    className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground h-14 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10"
+            {/* Rate the completed service */}
+            {request.status === "completed" && task && (
+                <button
+                    type="button"
+                    onClick={() => setIsRatingOpen(true)}
+                    className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground h-14 rounded-2xl font-black text-xs uppercase tracking-widest hover:brightness-110 hover:-translate-y-px active:translate-y-0 transition-all shadow-primary-glow"
                 >
                     <Star className="w-4 h-4" />
                     Rate Service
-                </Link>
+                </button>
+            )}
+
+            {/* Rating popup */}
+            {isRatingOpen && task && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="fixed inset-0 bg-foreground/25 backdrop-blur-md animate-in fade-in duration-200"
+                        onClick={() => !isSubmittingRating && setIsRatingOpen(false)}
+                    />
+                    <div className="relative z-50 glass-panel rounded-3xl w-full max-w-sm p-6 shadow-pop animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-300 space-y-5">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold tracking-tight">Rate the Service</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    How did <span className="font-semibold text-foreground">{task.staffName}</span> do with your {request.type.replace(/_/g, " ")} request?
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsRatingOpen(false)}
+                                disabled={isSubmittingRating}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                aria-label="Close"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Star picker */}
+                        <div className="flex flex-col items-center gap-2 py-2">
+                            <div className="flex gap-2">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => setRating(star)}
+                                        onMouseEnter={() => setHoverRating(star)}
+                                        onMouseLeave={() => setHoverRating(0)}
+                                        className="p-1 transition-transform hover:scale-125 active:scale-95"
+                                        aria-label={`${star} star${star > 1 ? "s" : ""}`}
+                                    >
+                                        <Star
+                                            className={`w-8 h-8 transition-colors ${star <= (hoverRating || rating)
+                                                ? "fill-amber-400 text-amber-400"
+                                                : "text-muted-foreground/25"
+                                                }`}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground h-4">
+                                {RATING_LABELS[hoverRating || rating]}
+                            </p>
+                        </div>
+
+                        {/* Optional written feedback */}
+                        <textarea
+                            value={feedback}
+                            onChange={(e) => setFeedback(e.target.value)}
+                            placeholder="Tell us more (optional)…"
+                            rows={3}
+                            maxLength={500}
+                            className="w-full rounded-xl border border-input bg-card px-3.5 py-2.5 text-sm text-foreground shadow-[inset_0_1px_2px_rgb(16_24_40_/_0.04)] placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-4 focus:ring-ring/15 transition-all resize-none"
+                        />
+
+                        <button
+                            type="button"
+                            onClick={handleSubmitRating}
+                            disabled={rating === 0 || isSubmittingRating}
+                            className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground h-12 rounded-xl font-black text-xs uppercase tracking-widest shadow-primary-glow hover:brightness-110 transition-all disabled:opacity-50 disabled:shadow-none"
+                        >
+                            {isSubmittingRating ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <>
+                                    <Star className="w-4 h-4" />
+                                    Submit Review
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     )
