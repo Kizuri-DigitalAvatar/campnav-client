@@ -41,6 +41,8 @@ function typeMeta(type: string) {
         case "progress": return { icon: Clock, label: "Work Started" }
         case "update": return { icon: MessageSquare, label: "Task Update" }
         case "completion": return { icon: CheckCircle, label: "Request Completed" }
+        case "room_assignment": return { icon: Bell, label: "Room Assigned" }
+        case "rnr_countdown": return { icon: Calendar, label: "RnR Countdown" }
         default: return { icon: Bell, label: "Notification" }
     }
 }

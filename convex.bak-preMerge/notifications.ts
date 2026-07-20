@@ -1,17 +1,6 @@
-import { action, internalMutation, mutation, query } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
-
-// Role names have drifted over time; expand a role to all its aliases
-const ROLE_ALIASES: Record<string, string[]> = {
-    "camp-staff": ["camp-staff", "staff"],
-    "staff": ["camp-staff", "staff"],
-    "camper": ["camper", "visitor", "resident"],
-    "visitor": ["camper", "visitor", "resident"],
-    "resident": ["camper", "visitor", "resident"],
-    "admin": ["admin", "camp_manager", "camp_supervisor"],
-};
 
 // Send notification to all users with a specific role
 export const sendRoleNotification = mutation({
@@ -23,16 +12,16 @@ export const sendRoleNotification = mutation({
         message: v.string(),
     },
     handler: async (ctx, args) => {
-        // Find all users with this role (including alias role names)
-        const roles = ROLE_ALIASES[args.role] || [args.role];
-        const users = (await Promise.all(
-            roles.map((role) =>
-                ctx.db
-                    .query("users")
-                    .withIndex("by_role", (q) => q.eq("role", role))
-                    .collect()
-            )
-        )).flat();
+        // Find all users with this role
+        const users = await ctx.db
+            .query("users")
+            .withIndex("by_role", (q) => q.eq("role", args.role))
+            .collect();
+
+        console.log(`[sendRoleNotification] Found ${users.length} users with role: ${args.role}`);
+        if (users.length > 0) {
+            console.log(`[sendRoleNotification] User emails: ${users.map(u => u.email).join(", ")}`);
+        }
 
         const notifications = [];
 
@@ -54,6 +43,7 @@ export const sendRoleNotification = mutation({
             }
 
             if (prefs.email && user.email) {
+                console.log(`Queueing email notification for: ${user.email}`);
                 notifications.push(
                     ctx.db.insert("notifications", {
                         userId: user._id,
@@ -95,7 +85,7 @@ export const sendAssignmentNotification = mutation({
     },
     handler: async (ctx, args) => {
         const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("User not found");
+        if (!user) return;
 
         const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
         const notifications = [];
@@ -115,6 +105,7 @@ export const sendAssignmentNotification = mutation({
         }
 
         if (prefs.email && user.email) {
+            console.log(`Queueing email notification for: ${user.email}`);
             notifications.push(
                 ctx.db.insert("notifications", {
                     userId: args.userId,
@@ -144,6 +135,76 @@ export const sendAssignmentNotification = mutation({
     },
 });
 
+// Send reminder notification
+export const sendReminderNotification = mutation({
+    args: {
+        userId: v.id("users"),
+        assignmentId: v.id("tasks"),
+        message: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (!user) return;
+
+        const assignment = await ctx.db.get(args.assignmentId);
+        if (!assignment) return;
+
+        const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+
+        // Update assignment reminder tracking
+        await ctx.db.patch(args.assignmentId, {
+            lastReminderSent: Date.now(),
+            reminderCount: (assignment.reminderCount || 0) + 1,
+        });
+
+        // Send notifications based on preferences
+        const notifications = [];
+
+        if (prefs.push) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    type: "reminder",
+                    channel: "push",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        if (prefs.email && user.email) {
+            console.log(`Queueing email notification for: ${user.email}`);
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    type: "reminder",
+                    channel: "email",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        if (prefs.sms && user.phoneNumber) {
+            notifications.push(
+                ctx.db.insert("notifications", {
+                    userId: args.userId,
+                    assignmentId: args.assignmentId,
+                    type: "reminder",
+                    channel: "sms",
+                    status: "pending",
+                    message: args.message,
+                })
+            );
+        }
+
+        await Promise.all(notifications);
+    },
+});
+
+// Notify camper about task status update
 export const sendCamperNotification = mutation({
     args: {
         userId: v.id("users"),
@@ -196,78 +257,10 @@ export const sendCamperNotification = mutation({
     },
 });
 
-// Send reminder notification
-export const sendReminderNotification = mutation({
-    args: {
-        userId: v.id("users"),
-        assignmentId: v.id("tasks"),
-        message: v.string(),
-    },
-    handler: async (ctx, args) => {
-        const user = await ctx.db.get(args.userId);
-        if (!user) throw new Error("User not found");
-
-        const assignment = await ctx.db.get(args.assignmentId);
-        if (!assignment) throw new Error("Assignment not found");
-
-        const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
-
-        // Update assignment reminder tracking
-        await ctx.db.patch(args.assignmentId, {
-            lastReminderSent: Date.now(),
-            reminderCount: (assignment.reminderCount || 0) + 1,
-        });
-
-        // Send notifications based on preferences
-        const notifications = [];
-
-        if (prefs.push) {
-            notifications.push(
-                ctx.db.insert("notifications", {
-                    userId: args.userId,
-                    assignmentId: args.assignmentId,
-                    type: "reminder",
-                    channel: "push",
-                    status: "pending",
-                    message: args.message,
-                })
-            );
-        }
-
-        if (prefs.email && user.email) {
-            notifications.push(
-                ctx.db.insert("notifications", {
-                    userId: args.userId,
-                    assignmentId: args.assignmentId,
-                    type: "reminder",
-                    channel: "email",
-                    status: "pending",
-                    message: args.message,
-                })
-            );
-        }
-
-        if (prefs.sms && user.phoneNumber) {
-            notifications.push(
-                ctx.db.insert("notifications", {
-                    userId: args.userId,
-                    assignmentId: args.assignmentId,
-                    type: "reminder",
-                    channel: "sms",
-                    status: "pending",
-                    message: args.message,
-                })
-            );
-        }
-
-        await Promise.all(notifications);
-    },
-});
-
-// Notify admin about unresponsive worker
+// Notify admin about unresponsive worker or request
 export const notifyAdminUnresponsive = mutation({
     args: {
-        assignmentId: v.id("tasks"),
+        assignmentId: v.optional(v.id("tasks")),
         requestId: v.optional(v.id("requests")),
         workerName: v.optional(v.string()),
         message: v.string(),
@@ -345,59 +338,14 @@ export const getNotificationHistory = query({
     },
 });
 
-// In-app notification feed for the bell popup (push channel only, newest first)
-export const getForUser = query({
-    args: { userId: v.id("users") },
-    handler: async (ctx, args) => {
-        const notifications = await ctx.db
-            .query("notifications")
-            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-            .order("desc")
-            .collect();
-        return notifications
-            .filter((n) => n.channel === "push")
-            .slice(0, 50);
-    },
-});
-
-// Unread count for the bell badge
-export const getUnreadCount = query({
-    args: { userId: v.id("users") },
-    handler: async (ctx, args) => {
-        const notifications = await ctx.db
-            .query("notifications")
-            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-            .collect();
-        return notifications.filter((n) => n.channel === "push" && !n.readAt).length;
-    },
-});
-
-// Mark all of a user's in-app notifications as read (called when the popup opens)
-export const markAllRead = mutation({
-    args: { userId: v.id("users") },
-    handler: async (ctx, args) => {
-        const unread = (await ctx.db
-            .query("notifications")
-            .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-            .collect()
-        ).filter((n) => n.channel === "push" && !n.readAt);
-        await Promise.all(unread.map((n) => ctx.db.patch(n._id, { readAt: Date.now() })));
-    },
-});
-
-// Get pending notifications for a specific user (push channel only — used by the client toast listener)
+// Get pending notifications for a specific user
 export const getMyPendingNotifications = query({
     args: { userId: v.id("users") },
     handler: async (ctx, args) => {
         return await ctx.db
             .query("notifications")
             .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-            .filter((q) =>
-                q.and(
-                    q.eq(q.field("status"), "pending"),
-                    q.eq(q.field("channel"), "push")
-                )
-            )
+            .filter((q) => q.eq(q.field("status"), "pending"))
             .collect();
     },
 });
@@ -418,8 +366,10 @@ export const getUnresponsiveWorkers = query({
         );
 
         return Promise.all(
-            unresponsive.map(async (a: any) => {
+            unresponsive.map(async (a) => {
                 const worker = a.staffId ? await ctx.db.get(a.staffId) : null;
+                // Double check if worker exists and has the expected fields
+                // Convex ctx.db.get return value depends on the table schema
                 const workerData = worker as any;
                 return {
                     ...a,
@@ -439,6 +389,8 @@ export const getPendingNotifications = query({
             .query("notifications")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
+
+        console.log(`[getPendingNotifications] Found ${pending.length} pending notifications in total`);
 
         return Promise.all(
             pending.map(async (n) => {
@@ -466,71 +418,5 @@ export const updateNotificationStatus = internalMutation({
             status: args.status,
             sentAt: args.status === "sent" ? Date.now() : undefined,
         });
-    },
-});
-
-// Action to process email notifications via Resend
-export const processEmailNotifications = action({
-    args: {},
-    handler: async (ctx) => {
-        const resendApiKey = process.env.RESEND_API_KEY;
-        if (!resendApiKey) {
-            console.error("RESEND_API_KEY not found in environment variables");
-            return;
-        }
-
-        const pending = await ctx.runQuery(api.notifications.getPendingNotifications);
-        const emailNotifications = pending.filter((n: any) => n.channel === "email" && n.userEmail);
-
-        console.log(`Processing ${emailNotifications.length} email notifications`);
-
-        for (const notif of emailNotifications) {
-            try {
-                const response = await fetch("https://api.resend.com/emails", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${resendApiKey}`,
-                    },
-                    body: JSON.stringify({
-                        from: "CAMPNAV <edward.kamara@kizuri-international.com>", // Use testing domain until campnav.com is verified
-                        to: [notif.userEmail],
-                        subject: `CAMPNAV: New Camp Service Request`,
-                        html: `
-                            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                                <h1 style="color: #000;">New Camp Service Request</h1>
-                                <p>${notif.message}</p>
-                                <hr />
-                                <p style="font-size: 12px; color: #666;">This is an automated notification from CAMPNAV.</p>
-                                <p style="font-size: 10px; color: #999;">Sent via Resend Test Domain</p>
-                            </div>
-                        `,
-                    }),
-                });
-
-                if (response.ok) {
-                    await ctx.runMutation(internal.notifications.updateNotificationStatus, {
-                        id: notif._id,
-                        status: "sent",
-                    });
-                } else {
-                    const errorData = await response.json();
-                    console.error("Failed to send email:", errorData);
-                    await ctx.runMutation(internal.notifications.updateNotificationStatus, {
-                        id: notif._id,
-                        status: "failed",
-                    });
-                }
-            } catch (error) {
-                console.error("Error processing email notification:", error);
-                await ctx.runMutation(internal.notifications.updateNotificationStatus, {
-                    id: notif._id,
-                    status: "failed",
-                });
-            }
-
-            // Add a small delay to respect Resend rate limits (2 req/sec free tier)
-            await new Promise(resolve => setTimeout(resolve, 600));
-        }
     },
 });

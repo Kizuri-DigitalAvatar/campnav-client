@@ -64,57 +64,22 @@ export const approveRnRRequest = mutation({
       approvedAt: Date.now(),
     });
 
-    const user = await ctx.db.get(request.userId);
-    if (user) {
-      const prefs = (user as any).notificationPreferences || { push: true, email: true, sms: true };
-      const typeLabel = request.type === "flight" ? "Flight" : request.type === "leave" ? "Leave" : "Accommodation";
+    // If it's a flight request, send notifications to relevant parties
+    if (request.type === "flight" && request.countdownDays && request.countdownDays <= 7) {
+      const notifications = ["hod", "camp_hk_kitchen"];
+      await ctx.db.patch(args.requestId, {
+        notificationsSent: notifications,
+      });
 
-      // Always notify the requester that their RnR was approved
-      if (prefs.push) {
+      // Create notification entries for each relevant party
+      for (const party of notifications) {
         await ctx.db.insert("notifications", {
-          userId: request.userId,
-          type: "acceptance",
+          userId: args.approvedBy, // Using approver as recipient for now
+          type: "rnr_countdown",
           channel: "push",
           status: "pending",
-          message: `Your ${typeLabel} RnR request has been approved.`,
+          message: `Flight RnR countdown started: ${request.countdownDays} days until departure`,
         });
-      }
-      if (prefs.email && user.email) {
-        await ctx.db.insert("notifications", {
-          userId: request.userId,
-          type: "acceptance",
-          channel: "email",
-          status: "pending",
-          message: `Your ${typeLabel} RnR request has been approved.`,
-        });
-      }
-      if (prefs.sms && (user as any).phoneNumber) {
-        await ctx.db.insert("notifications", {
-          userId: request.userId,
-          type: "acceptance",
-          channel: "sms",
-          status: "pending",
-          message: `Your ${typeLabel} RnR request has been approved.`,
-        });
-      }
-
-      // For flight requests close to departure, also send a countdown notification
-      if (request.type === "flight" && request.countdownDays && request.countdownDays <= 7) {
-        const notifications = ["hod", "camp_hk_kitchen"];
-        await ctx.db.patch(args.requestId, {
-          notificationsSent: notifications,
-        });
-
-        // Countdown reminder goes to the requester (not the approver)
-        if (prefs.push) {
-          await ctx.db.insert("notifications", {
-            userId: request.userId,
-            type: "rnr_countdown",
-            channel: "push",
-            status: "pending",
-            message: `Flight RnR countdown: ${request.countdownDays} day${request.countdownDays === 1 ? "" : "s"} until your departure.`,
-          });
-        }
       }
     }
 
@@ -134,52 +99,13 @@ export const rejectRnRRequest = mutation({
       throw new Error("RnR request not found");
     }
 
-    await ctx.db.patch(args.requestId, {
+    return await ctx.db.patch(args.requestId, {
       status: "rejected",
       approvedBy: args.approvedBy,
       approvedAt: Date.now(),
     });
-
-    // Notify the requester about rejection
-    const user = await ctx.db.get(request.userId);
-    if (user) {
-      const prefs = (user as any).notificationPreferences || { push: true, email: true, sms: true };
-      const typeLabel = request.type === "flight" ? "Flight" : request.type === "leave" ? "Leave" : "Accommodation";
-      const message = `Your ${typeLabel} RnR request was not approved${args.reason ? `: ${args.reason}` : "."}`;
-
-      if (prefs.push) {
-        await ctx.db.insert("notifications", {
-          userId: request.userId,
-          type: "update",
-          channel: "push",
-          status: "pending",
-          message,
-        });
-      }
-      if (prefs.email && user.email) {
-        await ctx.db.insert("notifications", {
-          userId: request.userId,
-          type: "update",
-          channel: "email",
-          status: "pending",
-          message,
-        });
-      }
-      if (prefs.sms && (user as any).phoneNumber) {
-        await ctx.db.insert("notifications", {
-          userId: request.userId,
-          type: "update",
-          channel: "sms",
-          status: "pending",
-          message,
-        });
-      }
-    }
-
-    return await ctx.db.get(args.requestId);
   },
 });
-
 
 export const getRnRRequests = query({
   args: {

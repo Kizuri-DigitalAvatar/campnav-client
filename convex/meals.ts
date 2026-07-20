@@ -36,6 +36,97 @@ export const createMealOrder = mutation({
   },
 });
 
+// A resident/guest's meal orders for one menu week (Sunday–Saturday)
+export const getWeeklyMealSelections = query({
+  args: {
+    userId: v.id("users"),
+    weekStart: v.number(), // timestamp of the Sunday the week starts
+  },
+  handler: async (ctx, args) => {
+    const WEEK = 7 * 24 * 60 * 60 * 1000;
+    const orders = await ctx.db
+      .query("mealOrders")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+    return orders.filter(
+      (o) => o.date >= args.weekStart && o.date < args.weekStart + WEEK
+    );
+  },
+});
+
+// Upsert a resident/guest's meal selections for a whole week in one call.
+// Replaces their still-pending orders; orders the kitchen has already picked
+// up (confirmed/preparing/ready/completed) are left untouched.
+export const saveWeeklyMealSelections = mutation({
+  args: {
+    userId: v.id("users"),
+    weekStart: v.number(),
+    dietaryRestrictions: v.array(v.string()),
+    preferences: v.optional(v.object({
+      riceType: v.string(),
+      spiceLevel: v.string(),
+    })),
+    selections: v.array(v.object({
+      date: v.number(),
+      mealType: v.string(),
+      items: v.array(v.object({
+        name: v.string(),
+        quantity: v.number(),
+        specialInstructions: v.optional(v.string()),
+      })),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const WEEK = 7 * 24 * 60 * 60 * 1000;
+    const existing = (
+      await ctx.db
+        .query("mealOrders")
+        .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+        .collect()
+    ).filter((o) => o.date >= args.weekStart && o.date < args.weekStart + WEEK);
+
+    let saved = 0;
+    for (const selection of args.selections) {
+      const match = existing.find(
+        (o) => o.date === selection.date && o.mealType === selection.mealType
+      );
+
+      if (match) {
+        if (match.status !== "pending") continue;
+        if (selection.items.length === 0) {
+          await ctx.db.delete(match._id);
+        } else {
+          await ctx.db.patch(match._id, {
+            items: selection.items,
+            dietaryRestrictions: args.dietaryRestrictions,
+            preferences: args.preferences,
+          });
+          saved++;
+        }
+      } else if (selection.items.length > 0) {
+        await ctx.db.insert("mealOrders", {
+          userId: args.userId,
+          date: selection.date,
+          mealType: selection.mealType,
+          items: selection.items,
+          dietaryRestrictions: args.dietaryRestrictions,
+          preferences: args.preferences,
+          status: "pending",
+          createdAt: Date.now(),
+        });
+        saved++;
+      }
+    }
+
+    return { saved };
+  },
+});
+
 export const updateMealOrderStatus = mutation({
   args: {
     orderId: v.id("mealOrders"),

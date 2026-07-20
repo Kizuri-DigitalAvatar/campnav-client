@@ -14,8 +14,7 @@ export function NotificationListener() {
     const userId = user?._id as any
     const router = useRouter()
 
-    // Only query if we have a user
-    // The query should now be available since convex dev has run
+    // Only query push-channel pending notifications for this user
     const pendingNotifications = useQuery(
         api.notifications.getMyPendingNotifications,
         userId ? { userId } : "skip"
@@ -33,29 +32,45 @@ export function NotificationListener() {
 
             lastNotifiedRef.current.add(notification._id)
 
+            // Determine toast title based on notification type
+            const toastTitle =
+                notification.type === "assignment" ? "New Assignment" :
+                notification.type === "room_assignment" ? "🏠 Room Assigned" :
+                notification.type === "reminder" ? "Reminder" :
+                notification.type === "acceptance" ? "Request Accepted" :
+                notification.type === "completion" ? "Request Completed" :
+                notification.type === "announcement" ? "Announcement" :
+                notification.type === "rnr_countdown" ? "✈️ RnR Countdown" :
+                "Notification"
+
             // Show toast
-            toast(notification.type === "assignment" ? "New Assignment" : "Notification", {
+            toast(toastTitle, {
                 description: notification.message,
                 icon: <Bell className="w-4 h-4 text-primary" />,
-                action: {
-                    label: "Details",
-                    onClick: () => {
-                        if (notification.assignmentId) {
-                            router.push(`/assignments/${notification.assignmentId}`)
-                        } else {
-                            router.push("/assignments")
-                        }
+                duration: 6000,
+                // No action button for room_assignment – it's informational
+                action: notification.type === "room_assignment" || notification.type === "rnr_countdown"
+                    ? undefined
+                    : {
+                        label: "Details",
+                        onClick: () => {
+                            if (notification.assignmentId) {
+                                router.push(`/assignments/${notification.assignmentId}`)
+                            } else if (notification.requestId) {
+                                router.push(`/requests/${notification.requestId}`)
+                            } else {
+                                router.push("/requests")
+                            }
+                        },
                     },
-                },
             })
 
-            // Mark as delivered immediately so it doesn't stay in "pending" status
-            // (Setting it to "delivered" prevents it from showing up in the pending query next time)
+            // Mark as delivered so it won't re-appear on next query
             markAsDelivered({ id: notification._id, status: "delivered" }).catch(err => {
                 console.error("Failed to mark notification as delivered:", err)
             })
         })
-    }, [pendingNotifications, markAsDelivered])
+    }, [pendingNotifications, markAsDelivered, router])
 
     return null
 }

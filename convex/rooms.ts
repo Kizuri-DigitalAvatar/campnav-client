@@ -67,6 +67,9 @@ export const update = mutation({
     },
     handler: async (ctx, args) => {
         const { id, occupantId, ...rest } = args;
+        const room = await ctx.db.get(id);
+        if (!room) throw new Error("Room not found");
+
         // Handle the null case for occupantId specifically because of union
         const updateData: Partial<Doc<"rooms">> = { ...rest };
         if (occupantId !== undefined) {
@@ -74,6 +77,43 @@ export const update = mutation({
         }
         await ctx.db.patch(id, updateData);
         await recordOccupancySnapshot(ctx);
+
+        // If occupantId changed and is a user
+        if (occupantId !== undefined && occupantId !== null && occupantId !== room.occupantId) {
+            const user = await ctx.db.get(occupantId);
+            if (user) {
+                const message = `Room assigned: You have been assigned to Room ${args.roomNumber || room.roomNumber}`;
+                const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+                
+                if (prefs.push) {
+                    await ctx.db.insert("notifications", {
+                        userId: occupantId,
+                        type: "room_assignment",
+                        channel: "push",
+                        status: "pending",
+                        message,
+                    });
+                }
+                if (prefs.email && user.email) {
+                    await ctx.db.insert("notifications", {
+                        userId: occupantId,
+                        type: "room_assignment",
+                        channel: "email",
+                        status: "pending",
+                        message,
+                    });
+                }
+                if (prefs.sms && user.phoneNumber) {
+                    await ctx.db.insert("notifications", {
+                        userId: occupantId,
+                        type: "room_assignment",
+                        channel: "sms",
+                        status: "pending",
+                        message,
+                    });
+                }
+            }
+        }
     },
 });
 
@@ -91,10 +131,50 @@ export const assignOccupant = mutation({
         userId: v.union(v.id("users"), v.null()),
     },
     handler: async (ctx, args) => {
+        const room = await ctx.db.get(args.roomId);
+        if (!room) throw new Error("Room not found");
+
         const status = args.userId ? "occupied" : "available";
         const occupantId = args.userId === null ? undefined : args.userId;
         await ctx.db.patch(args.roomId, { occupantId, status });
         await recordOccupancySnapshot(ctx);
+
+        // If occupant assigned and it changed
+        if (args.userId && args.userId !== room.occupantId) {
+            const user = await ctx.db.get(args.userId);
+            if (user) {
+                const message = `Room assigned: You have been assigned to Room ${room.roomNumber}`;
+                const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+                
+                if (prefs.push) {
+                    await ctx.db.insert("notifications", {
+                        userId: args.userId,
+                        type: "room_assignment",
+                        channel: "push",
+                        status: "pending",
+                        message,
+                    });
+                }
+                if (prefs.email && user.email) {
+                    await ctx.db.insert("notifications", {
+                        userId: args.userId,
+                        type: "room_assignment",
+                        channel: "email",
+                        status: "pending",
+                        message,
+                    });
+                }
+                if (prefs.sms && user.phoneNumber) {
+                    await ctx.db.insert("notifications", {
+                        userId: args.userId,
+                        type: "room_assignment",
+                        channel: "sms",
+                        status: "pending",
+                        message,
+                    });
+                }
+            }
+        }
     },
 });
 
