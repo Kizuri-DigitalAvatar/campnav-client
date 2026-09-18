@@ -55,11 +55,11 @@ export function NotificationListener() {
                         label: "Details",
                         onClick: () => {
                             if (notification.assignmentId) {
-                                router.push(`/assignments/${notification.assignmentId}`)
+                                router.push(`/campnav/assignments/${notification.assignmentId}`)
                             } else if (notification.requestId) {
-                                router.push(`/requests/${notification.requestId}`)
+                                router.push(`/campnav/requests/${notification.requestId}`)
                             } else {
-                                router.push("/requests")
+                                router.push("/campnav/requests")
                             }
                         },
                     },

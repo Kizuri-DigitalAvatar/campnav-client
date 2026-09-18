@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 
-const PUBLIC_PATHS = new Set(["/welcome", "/login"])
+const PUBLIC_PATHS = new Set(["/campnav/welcome", "/campnav/login"])
 
 // Full-screen buffer shown while auth is being verified or a redirect is in flight.
 // Nothing protected is ever rendered behind it.
@@ -36,12 +36,12 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     if (loading) return
 
     if (!user && !isPublic) {
-      router.replace("/welcome")
+      router.replace("/campnav/welcome")
       return
     }
 
     if (user && isPublic) {
-      router.replace("/home")
+      router.replace("/campnav")
     }
   }, [user, loading, isPublic, router])
 

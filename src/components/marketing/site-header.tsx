@@ -80,7 +80,7 @@ export function SiteHeader() {
                             <ModeToggle />
                         </div>
                         <Button variant="ghost" asChild className="hidden sm:inline-flex">
-                            <Link href={signedIn ? "/home" : "/login"}>
+                            <Link href={signedIn ? "/campnav" : "/campnav/login"}>
                                 {signedIn ? <LayoutDashboard className="size-4" /> : <LogIn className="size-4" />}
                                 {signedIn ? "Open app" : "Log in"}
                             </Link>
@@ -132,7 +132,7 @@ export function SiteHeader() {
                             <Link href="/contact">Book a demo</Link>
                         </Button>
                         <Button asChild variant="outline" size="lg" className="h-12 w-full rounded-full text-base">
-                            <Link href={signedIn ? "/home" : "/login"}>
+                            <Link href={signedIn ? "/campnav" : "/campnav/login"}>
                                 {signedIn ? "Open CampNav" : "Log in to CampNav"}
                             </Link>
                         </Button>

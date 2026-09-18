@@ -117,7 +117,7 @@ export default function ContactPage() {
                         <Reveal delay={560}>
                             <p className="mt-6 text-sm text-muted-foreground">
                                 Already a CAMPNAV camp?{" "}
-                                <Link href="/login" className="font-semibold text-primary hover:underline">
+                                <Link href="/campnav/login" className="font-semibold text-primary hover:underline">
                                     Log in here
                                 </Link>
                                 .

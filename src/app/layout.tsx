@@ -28,7 +28,7 @@ const nexa = localFont({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://campnav.app"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://zurimining.com"),
   title: {
     default: "CAMPNAV — Camp operations in one place",
     template: "%s · CAMPNAV",

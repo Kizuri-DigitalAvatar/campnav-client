@@ -5,8 +5,8 @@
     "theme_color": "#4f46e5",
     "background_color": "#000000",
     "display": "standalone",
-    "scope": "/",
-    "start_url": "/home",
+    "scope": "/campnav",
+    "start_url": "/campnav",
     "icons": [
         {
             "src": "/icons/icon-192x192.png",

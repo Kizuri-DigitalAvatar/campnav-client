@@ -126,7 +126,7 @@ export function WorkerHome({ user }: { user: any }) {
                 <div className="flex items-center justify-between px-1">
                     <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Focus Task</h2>
                     {assignments.length > 0 && (
-                        <Link href="/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
+                        <Link href="/campnav/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
                             Go to Dashboard <ArrowRight size={10} />
                         </Link>
                     )}
@@ -161,7 +161,7 @@ export function WorkerHome({ user }: { user: any }) {
                 <section className="space-y-3">
                     <div className="flex items-center justify-between px-1">
                         <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Recent Assignments</h2>
-                        <Link href="/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
+                        <Link href="/campnav/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
                             View All <ArrowRight size={10} />
                         </Link>
                     </div>
@@ -172,7 +172,7 @@ export function WorkerHome({ user }: { user: any }) {
                             .map((task: any) => (
                                 <Link
                                     key={task._id}
-                                    href={`/assignments/${task._id}`}
+                                    href={`/campnav/assignments/${task._id}`}
                                     className="flex items-center gap-3 bg-card border rounded-2xl p-4 shadow-sm hover:border-primary/50 transition-colors"
                                 >
                                     <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
@@ -233,7 +233,7 @@ export function WorkerHome({ user }: { user: any }) {
             <section className="space-y-4">
                 <div className="flex items-center justify-between px-1">
                     <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Updates</h2>
-                    <Link href="/updates" className="text-[10px] font-black uppercase tracking-widest text-primary">View All</Link>
+                    <Link href="/campnav/updates" className="text-[10px] font-black uppercase tracking-widest text-primary">View All</Link>
                 </div>
 
                 <div className="space-y-3">

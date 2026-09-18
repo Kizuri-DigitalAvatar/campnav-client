@@ -26,7 +26,7 @@ const COLUMNS = [
         title: "Get started",
         links: [
             { href: "/contact", label: "Book a demo" },
-            { href: "/login", label: "Log in" },
+            { href: "/campnav/login", label: "Log in" },
             { href: `mailto:${CONTACT.email}`, label: "Talk to sales" },
         ],
     },

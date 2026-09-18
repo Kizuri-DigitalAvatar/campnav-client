@@ -16,16 +16,16 @@ export function BurgerMenu() {
 
     const navItems = user && isWorker(user.role)
         ? [
-            { href: "/home", label: "Home", icon: Home },
-            { href: "/assignments", label: "Tasks", icon: ClipboardList },
-            { href: "/history", label: "History", icon: History },
-            { href: "/profile", label: "Profile", icon: User },
+            { href: "/campnav", label: "Home", icon: Home },
+            { href: "/campnav/assignments", label: "Tasks", icon: ClipboardList },
+            { href: "/campnav/history", label: "History", icon: History },
+            { href: "/campnav/profile", label: "Profile", icon: User },
         ]
         : [
-            { href: "/home", label: "Home", icon: Home },
-            { href: "/services", label: "Services", icon: Grid2X2 },
-            { href: "/updates", label: "Updates", icon: Bell },
-            { href: "/profile", label: "Profile", icon: User },
+            { href: "/campnav", label: "Home", icon: Home },
+            { href: "/campnav/services", label: "Services", icon: Grid2X2 },
+            { href: "/campnav/updates", label: "Updates", icon: Bell },
+            { href: "/campnav/profile", label: "Profile", icon: User },
         ]
 
     return (

@@ -39,7 +39,7 @@ const getStatusIcon = (status: string) => {
 
 export function RequestCard({ request: req }: RequestCardProps) {
     return (
-        <Link href={`/requests/${req._id}`} className="block transition-transform active:scale-[0.98]">
+        <Link href={`/campnav/requests/${req._id}`} className="block transition-transform active:scale-[0.98]">
             <Card className="relative overflow-hidden rounded-2xl border bg-card/90 p-4 shadow-sm hover:border-primary/30 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                     <div className="space-y-3 flex-1">
