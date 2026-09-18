@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
+import { CampnavLogo } from "@/components/campnav-logo"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -40,9 +41,7 @@ export default function LoginPage() {
             <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Brand mark */}
                 <div className="flex flex-col items-center mb-8 space-y-4">
-                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl tile-3d-primary text-primary-foreground font-extrabold text-2xl">
-                        CN
-                    </div>
+                    <CampnavLogo size={68} priority />
                     <div className="text-center">
                         <h1 className="text-2xl font-bold tracking-tight">Sign In</h1>
                         <p className="text-muted-foreground text-sm mt-1">Welcome back to CAMPNAV</p>

@@ -13,6 +13,7 @@ import { NotificationBell } from "@/components/notification-bell"
 import { cn } from "@/lib/utils"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../convex/_generated/api"
+import { CampnavLogo } from "@/components/campnav-logo"
 
 export function Header() {
     const { user } = useAuth()
@@ -83,9 +84,7 @@ export function Header() {
                 <div className="container flex items-center justify-between h-16 px-4 mx-auto md:px-6">
                     {/* Left: Logo */}
                     <Link href="/campnav" className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-xl tile-3d-primary text-primary-foreground font-extrabold text-sm">
-                            CN
-                        </div>
+                        <CampnavLogo size={34} alt="" priority />
                         <span className="text-lg font-bold tracking-tight hidden md:inline-block">CAMPNAV</span>
                     </Link>
 

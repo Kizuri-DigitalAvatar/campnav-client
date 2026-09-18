@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { useEffect } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
+import { CampnavLogo } from "@/components/campnav-logo"
 
 const PUBLIC_PATHS = new Set(["/campnav/welcome", "/campnav/login"])
 
@@ -12,9 +13,7 @@ const PUBLIC_PATHS = new Set(["/campnav/welcome", "/campnav/login"])
 function AuthBuffer() {
   return (
     <div className="fixed inset-0 z-[200] bg-background flex flex-col items-center justify-center gap-4">
-      <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-primary text-primary-foreground font-black text-lg shadow-lg shadow-primary/20">
-        CN
-      </div>
+      <CampnavLogo size={52} priority />
       <div className="flex items-center gap-2 text-muted-foreground">
         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
         <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />

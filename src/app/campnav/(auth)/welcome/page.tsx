@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Tent, Compass, MapPin, Bell, Utensils, Sparkles } from "lucide-react"
+import { CampnavLogo } from "@/components/campnav-logo"
 
 export default function WelcomePage() {
   return (
@@ -62,9 +63,7 @@ export default function WelcomePage() {
           {/* Brand mark — pops in first, then floats gently */}
           <div className="mx-auto w-fit animate-in fade-in zoom-in-75 duration-700">
             <div className="animate-float" style={{ animationDelay: "-1.5s" } as React.CSSProperties}>
-              <div className="flex items-center justify-center h-28 w-28 rounded-[2rem] tile-3d-primary text-primary-foreground font-extrabold text-4xl">
-                CN
-              </div>
+              <CampnavLogo size={116} priority />
             </div>
           </div>
 

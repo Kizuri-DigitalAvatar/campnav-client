@@ -11,6 +11,7 @@ import {
     Wrench,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { CampnavLogo } from "@/components/campnav-logo"
 
 /**
  * Hero device mock: a phone running the resident app, walking through the life
@@ -76,9 +77,7 @@ export function DeviceMock({ className }: { className?: string }) {
                                 </p>
                                 <p className="text-base font-black tracking-tight">Room 214</p>
                             </div>
-                            <div className="flex size-9 items-center justify-center rounded-xl tile-3d-primary text-[11px] font-extrabold text-primary-foreground">
-                                CN
-                            </div>
+                            <CampnavLogo size={30} alt="" />
                         </div>
 
                         {/* Live request card */}
