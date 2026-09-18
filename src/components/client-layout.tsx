@@ -35,7 +35,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (isBlockedForStaff) {
-            router.replace("/")
+            router.replace("/home")
         }
     }, [isBlockedForStaff, router])
 

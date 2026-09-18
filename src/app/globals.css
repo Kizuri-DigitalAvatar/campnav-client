@@ -332,3 +332,163 @@
     transform: translateY(-10px) rotate(var(--tile-rot, 0deg));
   }
 }
+
+/* ────────────────────────────────────────────────────────────────
+   Marketing site
+   Utilities used only by the public landing pages at `/`.
+   ──────────────────────────────────────────────────────────────── */
+
+@layer utilities {
+
+  /* Headline accent — blue → violet wash on the key phrase */
+  .text-gradient {
+    background-image: linear-gradient(100deg,
+        var(--primary) 0%,
+        color-mix(in oklch, var(--primary) 70%, oklch(0.606 0.219 292.7)) 55%,
+        oklch(0.656 0.19 292.7) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Soft colour wash behind hero / CTA sections */
+  .aurora::before,
+  .aurora::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(90px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .aurora::before {
+    width: 46rem;
+    height: 46rem;
+    top: -18rem;
+    left: -12rem;
+    background: color-mix(in oklch, var(--primary) 26%, transparent);
+    animation: drift 22s ease-in-out infinite;
+  }
+
+  .aurora::after {
+    width: 34rem;
+    height: 34rem;
+    top: -8rem;
+    right: -10rem;
+    background: color-mix(in oklch, oklch(0.656 0.19 292.7) 22%, transparent);
+    animation: drift 26s ease-in-out infinite reverse;
+  }
+
+  /* Faint engineering grid, fading out at the bottom */
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 6%, transparent) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: linear-gradient(to bottom, black, transparent 85%);
+    mask-image: linear-gradient(to bottom, black, transparent 85%);
+  }
+
+  /* Edge-faded horizontal scroller (logo / marquee rows) */
+  .edge-fade {
+    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+
+  .animate-marquee {
+    animation: marquee 38s linear infinite;
+  }
+
+  /* Scroll-reveal: set by <Reveal>, flipped to .is-visible on intersect */
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Hairline gradient border for premium cards */
+  .ring-gradient {
+    position: relative;
+  }
+
+  .ring-gradient::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg,
+        color-mix(in oklch, var(--primary) 45%, transparent),
+        transparent 45%,
+        color-mix(in oklch, var(--foreground) 10%, transparent));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .animate-pulse-ring {
+    animation: pulse-ring 2.4s ease-out infinite;
+  }
+}
+
+@keyframes drift {
+
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate3d(3rem, 2rem, 0) scale(1.12);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  70% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .animate-float,
+  .animate-marquee,
+  .animate-pulse-ring,
+  .aurora::before,
+  .aurora::after {
+    animation: none !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

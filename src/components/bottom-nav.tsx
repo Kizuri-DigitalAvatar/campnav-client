@@ -13,14 +13,14 @@ export function BottomNav() {
 
     const navItems = user && isWorker(user.role)
         ? [
-            { href: "/", label: "Home", icon: Home },
+            { href: "/home", label: "Home", icon: Home },
             { href: "/assignments", label: "Tasks", icon: ClipboardList },
             { href: "/available-tasks", label: "Available", icon: Inbox },
             { href: "/history", label: "History", icon: History },
             { href: "/profile", label: "Profile", icon: User },
         ]
         : [
-            { href: "/", label: "Home", icon: Home },
+            { href: "/home", label: "Home", icon: Home },
             { href: "/services", label: "Services", icon: Grid2X2 },
             { href: "/updates", label: "Updates", icon: Bell },
             { href: "/profile", label: "Profile", icon: User },

@@ -3,14 +3,12 @@ import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { DesktopNav } from "@/components/desktop-nav";
 
 import ConvexClientProvider from "@/components/convex-client-provider";
 import { AuthProvider } from "@/components/auth-provider";
-import { ClientLayout } from "@/components/client-layout";
 import { Toaster } from "sonner";
 
-const geistSans = Geist({ 
+const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
@@ -30,8 +28,13 @@ const nexa = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CAMPNAV",
-  description: "Your camping navigation companion",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://campnav.app"),
+  title: {
+    default: "CAMPNAV — Camp operations in one place",
+    template: "%s · CAMPNAV",
+  },
+  description:
+    "CAMPNAV runs the whole camp: resident service requests, staff dispatch, meals, housekeeping, maintenance, HSE reporting and live occupancy — on one platform.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -41,14 +44,22 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  openGraph: {
+    type: "website",
+    siteName: "CAMPNAV",
+    title: "CAMPNAV — Camp operations in one place",
+    description:
+      "One platform for resident requests, staff dispatch, meals, maintenance, HSE and occupancy.",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f6f2",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#141821" },
+  ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 
@@ -70,23 +81,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ConvexClientProvider>
-            <AuthProvider>
-              <div className="relative flex min-h-screen">
-                {/* Responsive Navigation */}
-                <DesktopNav />
-
-                <div className="flex-1 flex flex-col">
-                  <main className="flex-1 flex justify-center overflow-y-auto dot-grid">
-                    <div className="w-full max-w-[400px] md:max-w-7xl px-4 py-4 md:pb-8">
-                      {/* AuthGuard run on the client to gate access */}
-                      <ClientLayout>
-                        {children}
-                      </ClientLayout>
-                    </div>
-                  </main>
-                </div>
-              </div>
-            </AuthProvider>
+            <AuthProvider>{children}</AuthProvider>
           </ConvexClientProvider>
           <Toaster position="top-center" richColors />
         </ThemeProvider>

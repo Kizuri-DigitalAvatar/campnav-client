@@ -82,7 +82,7 @@ export function Header() {
             <header className="fixed top-0 inset-x-0 md:left-64 z-30 glass-panel border-b border-t-0 border-x-0">
                 <div className="container flex items-center justify-between h-16 px-4 mx-auto md:px-6">
                     {/* Left: Logo */}
-                    <Link href="/" className="flex items-center gap-2">
+                    <Link href="/home" className="flex items-center gap-2">
                         <div className="flex items-center justify-center w-9 h-9 rounded-xl tile-3d-primary text-primary-foreground font-extrabold text-sm">
                             CN
                         </div>

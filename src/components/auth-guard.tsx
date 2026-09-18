@@ -41,7 +41,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     }
 
     if (user && isPublic) {
-      router.replace("/")
+      router.replace("/home")
     }
   }, [user, loading, isPublic, router])
 

@@ -17,14 +17,14 @@ export function DesktopNav() {
 
     const navItems = user && isWorker(user.role)
         ? [
-            { name: 'Home', href: '/', icon: Home },
+            { name: 'Home', href: '/home', icon: Home },
             { name: 'Tasks', href: '/assignments', icon: ClipboardList },
             { name: 'Available Tasks', href: '/available-tasks', icon: Inbox },
             { name: 'History', href: '/history', icon: History },
             { name: 'Profile', href: '/profile', icon: User },
         ]
         : [
-            { name: 'Home', href: '/', icon: Home },
+            { name: 'Home', href: '/home', icon: Home },
             { name: 'Services', href: '/services', icon: Grid2X2 },
             { name: 'Updates', href: '/updates', icon: Bell },
             { name: 'Profile', href: '/profile', icon: User },
