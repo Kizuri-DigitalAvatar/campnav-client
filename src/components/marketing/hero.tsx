@@ -22,7 +22,7 @@ export function Hero() {
                     <Reveal delay={80}>
                         <h1 className="mt-5 text-[2.6rem] font-black leading-[1.03] tracking-tighter sm:text-6xl lg:text-[4.1rem]">
                             {HERO.title}{" "}
-                            <span className="text-gradient">{HERO.titleAccent}</span>
+                            <span className="text-gradient-blue">{HERO.titleAccent}</span>
                         </h1>
                     </Reveal>
 

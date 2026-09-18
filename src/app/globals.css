@@ -351,6 +351,18 @@
     color: transparent;
   }
 
+  /* Blue-only accent — same treatment as .text-gradient with the violet
+     taken out, for places where the purple reads as a second brand colour */
+  .text-gradient-blue {
+    background-image: linear-gradient(100deg,
+        var(--primary) 0%,
+        color-mix(in oklch, var(--primary) 72%, oklch(0.696 0.14 235)) 58%,
+        oklch(0.696 0.14 235) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
   /* Soft colour wash behind hero / CTA sections */
   .aurora::before,
   .aurora::after {
