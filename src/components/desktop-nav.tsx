@@ -17,17 +17,17 @@ export function DesktopNav() {
 
     const navItems = user && isWorker(user.role)
         ? [
-            { name: 'Home', href: '/', icon: Home },
-            { name: 'Tasks', href: '/assignments', icon: ClipboardList },
-            { name: 'Available Tasks', href: '/available-tasks', icon: Inbox },
-            { name: 'History', href: '/history', icon: History },
-            { name: 'Profile', href: '/profile', icon: User },
+            { name: 'Home', href: '/campnav', icon: Home },
+            { name: 'Tasks', href: '/campnav/assignments', icon: ClipboardList },
+            { name: 'Available Tasks', href: '/campnav/available-tasks', icon: Inbox },
+            { name: 'History', href: '/campnav/history', icon: History },
+            { name: 'Profile', href: '/campnav/profile', icon: User },
         ]
         : [
-            { name: 'Home', href: '/', icon: Home },
-            { name: 'Services', href: '/services', icon: Grid2X2 },
-            { name: 'Updates', href: '/updates', icon: Bell },
-            { name: 'Profile', href: '/profile', icon: User },
+            { name: 'Home', href: '/campnav', icon: Home },
+            { name: 'Services', href: '/campnav/services', icon: Grid2X2 },
+            { name: 'Updates', href: '/campnav/updates', icon: Bell },
+            { name: 'Profile', href: '/campnav/profile', icon: User },
         ]
 
     return (

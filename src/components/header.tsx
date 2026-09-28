@@ -13,6 +13,7 @@ import { NotificationBell } from "@/components/notification-bell"
 import { cn } from "@/lib/utils"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../convex/_generated/api"
+import { CampnavLogo } from "@/components/campnav-logo"
 
 export function Header() {
     const { user } = useAuth()
@@ -32,12 +33,12 @@ export function Header() {
 
     // Sub-services for the Services menu
     const serviceItems = [
-        { href: "/laundry", label: "Laundry", icon: Shirt },
-        { href: "/room-service", label: "Room Service", icon: Utensils },
-        { href: "/shop", label: "Online Shop", icon: ShoppingBag },
-        { href: "/maintenance", label: "Maintenance", icon: Wrench },
-        { href: "/house-keeping", label: "Housekeeping", icon: Brush },
-        { href: "/delivery", label: "Delivery", icon: Truck },
+        { href: "/campnav/laundry", label: "Laundry", icon: Shirt },
+        { href: "/campnav/room-service", label: "Room Service", icon: Utensils },
+        { href: "/campnav/shop", label: "Online Shop", icon: ShoppingBag },
+        { href: "/campnav/maintenance", label: "Maintenance", icon: Wrench },
+        { href: "/campnav/house-keeping", label: "Housekeeping", icon: Brush },
+        { href: "/campnav/delivery", label: "Delivery", icon: Truck },
     ]
 
     // Check if current user is a worker
@@ -46,23 +47,23 @@ export function Header() {
     // Navigation items - different for workers vs staff/visitors
     const navItems = userIsWorker
         ? [
-            { href: "/", label: "Home", icon: Home },
-            { href: "/assignments", label: "Assignments", icon: ClipboardList },
-            { href: "/available-tasks", label: "Available Tasks", icon: Inbox },
-            { href: "/shop", label: "Shop", icon: ShoppingBag },
-            { href: "/updates", label: "Announcements", icon: Bell },
-            { href: "/profile", label: "Profile", icon: User },
+            { href: "/campnav", label: "Home", icon: Home },
+            { href: "/campnav/assignments", label: "Assignments", icon: ClipboardList },
+            { href: "/campnav/available-tasks", label: "Available Tasks", icon: Inbox },
+            { href: "/campnav/shop", label: "Shop", icon: ShoppingBag },
+            { href: "/campnav/updates", label: "Announcements", icon: Bell },
+            { href: "/campnav/profile", label: "Profile", icon: User },
         ]
         : [
-            { href: "/", label: "Home", icon: Home },
+            { href: "/campnav", label: "Home", icon: Home },
             {
-                href: "/services",
+                href: "/campnav/services",
                 label: "Services",
                 icon: Grid2X2,
                 subItems: serviceItems
             },
-            { href: "/updates", label: "Announcements", icon: Bell },
-            { href: "/profile", label: "Profile", icon: User },
+            { href: "/campnav/updates", label: "Announcements", icon: Bell },
+            { href: "/campnav/profile", label: "Profile", icon: User },
         ]
 
     const toggleSubmenu = (label: string) => {
@@ -72,7 +73,7 @@ export function Header() {
     const handleSearch = (e?: React.FormEvent) => {
         if (e) e.preventDefault()
         if (searchQuery.trim()) {
-            router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`)
+            router.push(`/campnav/search?q=${encodeURIComponent(searchQuery.trim())}`)
             setIsSearchExpanded(false)
         }
     }
@@ -82,10 +83,8 @@ export function Header() {
             <header className="fixed top-0 inset-x-0 md:left-64 z-30 glass-panel border-b border-t-0 border-x-0">
                 <div className="container flex items-center justify-between h-16 px-4 mx-auto md:px-6">
                     {/* Left: Logo */}
-                    <Link href="/" className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-xl tile-3d-primary text-primary-foreground font-extrabold text-sm">
-                            CN
-                        </div>
+                    <Link href="/campnav" className="flex items-center gap-2">
+                        <CampnavLogo size={34} alt="" priority />
                         <span className="text-lg font-bold tracking-tight hidden md:inline-block">CAMPNAV</span>
                     </Link>
 
@@ -132,7 +131,7 @@ export function Header() {
                         {/* My Orders cart — guests/residents only (staff don't place orders) */}
                         {user && !userIsWorker && (
                             <Link
-                                href="/history"
+                                href="/campnav/history"
                                 className="relative md:hidden h-10 w-10 rounded-full border bg-card flex items-center justify-center hover:border-primary/60 hover:text-primary transition-colors active:scale-95"
                                 aria-label="My orders"
                                 title="My orders"
@@ -155,7 +154,7 @@ export function Header() {
                         </Button>
 
                         {/* Profile Avatar */}
-                        <Link href="/profile">
+                        <Link href="/campnav/profile">
                             <Avatar className="h-8 w-8 border-2 border-background shadow-sm hover:opacity-80 transition-opacity">
                                 <AvatarImage src={user?.image} alt={user?.name || "User"} />
                                 <AvatarFallback className="bg-primary/10 text-primary">

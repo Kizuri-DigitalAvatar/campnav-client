@@ -88,7 +88,7 @@ export const processEmailNotifications = internalAction({
                                 ${requestInfo}
 
                                 <div style="margin-top: 32px;">
-                                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://campnav.vercel.app'}" class="button">Go to Dashboard</a>
+                                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://app.zurimining.com/campnav'}" class="button">Go to Dashboard</a>
                                 </div>
 
                                 <div class="footer">

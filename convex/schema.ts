@@ -521,4 +521,22 @@ export default defineSchema({
   }).index("by_app", ["app"])
     .index("by_status", ["status"])
     .index("by_userId", ["userId"]),
+
+  demoRequests: defineTable({
+    fullName: v.string(),
+    workEmail: v.string(),
+    company: v.string(),
+    phone: v.optional(v.string()),
+    jobTitle: v.optional(v.string()),
+    campSize: v.optional(v.string()),
+    interests: v.optional(v.array(v.string())),
+    message: v.optional(v.string()),
+    preferredTime: v.optional(v.string()),
+    source: v.optional(v.string()),
+    status: v.string(), // new | contacted | scheduled | won | closed
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  }).index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 });

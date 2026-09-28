@@ -77,15 +77,15 @@ export function NotificationBell() {
     const handleClick = (n: any) => {
         setOpen(false)
         if (n.assignmentId && worker) {
-            router.push(`/assignments/${n.assignmentId}`)
+            router.push(`/campnav/assignments/${n.assignmentId}`)
         } else if (n.requestId && !worker) {
-            router.push(`/requests/${n.requestId}`)
+            router.push(`/campnav/requests/${n.requestId}`)
         } else if (n.type === "announcement" || n.type === "activity") {
-            router.push("/updates")
+            router.push("/campnav/updates")
         } else if (worker) {
-            router.push("/assignments")
+            router.push("/campnav/assignments")
         } else {
-            router.push("/requests")
+            router.push("/campnav/requests")
         }
     }
 
