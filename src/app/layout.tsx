@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 import ConvexClientProvider from "@/components/convex-client-provider";
 import { AuthProvider } from "@/components/auth-provider";
+import { RouteProgress } from "@/components/route-progress";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -80,6 +81,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <RouteProgress />
           <ConvexClientProvider>
             <AuthProvider>{children}</AuthProvider>
           </ConvexClientProvider>

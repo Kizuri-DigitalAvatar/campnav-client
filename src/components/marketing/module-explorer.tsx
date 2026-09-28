@@ -14,6 +14,8 @@ import {
     Wrench,
 } from "lucide-react"
 import { MODULES } from "@/components/marketing/content"
+import { MODULE_IMAGES } from "@/components/marketing/images"
+import { CARD_WIDTHS, MarketingImage } from "@/components/marketing/marketing-image"
 import { cn } from "@/lib/utils"
 
 const ICONS: Record<string, LucideIcon> = {
@@ -51,6 +53,9 @@ export function ModuleExplorer() {
 
     const module = MODULES[active]
     const ActiveIcon = ICONS[module.icon] ?? ConciergeBell
+    // Four of the eight modules have photography so far; the rest keep the
+    // illustrated preview panel on its own.
+    const moduleImage = MODULE_IMAGES[module.id]
 
     const onKeyDown = (event: React.KeyboardEvent) => {
         const last = MODULES.length - 1
@@ -153,6 +158,25 @@ export function ModuleExplorer() {
 
                     {/* Mock screen for the selected module */}
                     <div className="rounded-2xl border bg-background/60 p-4 shadow-[inset_0_1px_2px_rgb(16_24_40_/_0.04)]">
+                        {moduleImage && (
+                            <div className="relative -mx-4 -mt-4 mb-4 h-24 overflow-hidden rounded-t-2xl sm:h-28">
+                                <MarketingImage
+                                    slot={moduleImage}
+                                    /* Decorative: the module name and tagline sit
+                                       immediately beside this panel. */
+                                    alt=""
+                                    ratio="16:10"
+                                    sizes="(min-width: 1024px) 420px, 100vw"
+                                    widths={CARD_WIDTHS}
+                                    className="dark:brightness-90"
+                                />
+                                <div
+                                    className="absolute inset-0 bg-gradient-to-t from-background to-transparent"
+                                    aria-hidden="true"
+                                />
+                            </div>
+                        )}
+
                         <div className="flex items-start justify-between">
                             <div>
                                 <p className="text-sm font-bold tracking-tight">{module.preview.title}</p>

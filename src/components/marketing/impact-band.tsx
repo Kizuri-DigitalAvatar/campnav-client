@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { IMPACT } from "@/components/marketing/content"
+import { MARKETING_IMAGES } from "@/components/marketing/images"
+import { BACKDROP_WIDTHS, MarketingImage } from "@/components/marketing/marketing-image"
 
 /** Counts from 0 to `target` once the band scrolls into view. */
 function useCountUp(target: number, run: boolean, duration = 1100) {
@@ -41,11 +43,16 @@ function Stat({ value, suffix, label, run }: { value: number; suffix: string; la
 
     return (
         <div className="text-center">
-            <p className="text-4xl font-black tracking-tighter sm:text-5xl">
+            {/*
+             * Fixed light colours rather than theme tokens: this band sits on a
+             * dark scrim over the photograph in both themes, so the usual
+             * foreground tokens would disappear into it in light mode.
+             */}
+            <p className="text-4xl font-black tracking-tighter text-white sm:text-5xl">
                 {current}
-                <span className="text-gradient">{suffix}</span>
+                <span className="text-sky-300">{suffix}</span>
             </p>
-            <p className="mx-auto mt-2 max-w-[15rem] text-sm leading-snug text-muted-foreground">{label}</p>
+            <p className="mx-auto mt-2 max-w-[15rem] text-sm leading-snug text-white/75">{label}</p>
         </div>
     )
 }
@@ -82,11 +89,27 @@ export function ImpactBand() {
             <div className="mx-auto w-full max-w-6xl px-4">
                 <div
                     ref={ref}
-                    className="ring-gradient grid gap-10 rounded-3xl border bg-card/60 px-6 py-12 shadow-card backdrop-blur-sm sm:grid-cols-2 lg:grid-cols-4"
+                    className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950 shadow-card"
                 >
-                    {IMPACT.map((stat) => (
-                        <Stat key={stat.label} {...stat} run={run} />
-                    ))}
+                    <MarketingImage
+                        slot={MARKETING_IMAGES.impactBackdrop.slot}
+                        alt=""
+                        ratio="21:9"
+                        sizes="(min-width: 1280px) 1280px, 100vw"
+                        widths={BACKDROP_WIDTHS}
+                        className="absolute inset-0"
+                    />
+                    {/* The stats are the subject here; the photograph is texture. */}
+                    <div
+                        className="absolute inset-0 bg-slate-950/70 dark:bg-slate-950/80"
+                        aria-hidden="true"
+                    />
+
+                    <div className="relative grid gap-10 px-6 py-12 sm:grid-cols-2 lg:grid-cols-4">
+                        {IMPACT.map((stat) => (
+                            <Stat key={stat.label} {...stat} run={run} />
+                        ))}
+                    </div>
                 </div>
             </div>
         </section>

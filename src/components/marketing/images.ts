@@ -12,10 +12,20 @@ const CLOUD_NAME = "dntxs8rwc"
 const BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload`
 
 type CldOptions = {
-    /** Delivered width in CSS pixels. Cloudinary handles DPR via `dpr_auto`. */
+    /** Delivered width in pixels — the real pixel width, not CSS pixels. */
     width?: number
     /** Aspect ratio to crop to, e.g. "3:4". Omit to keep the master ratio. */
     ratio?: string
+    /**
+     * Let Cloudinary scale by the device pixel ratio.
+     *
+     * Off by default, and it must stay off for any URL that appears in a
+     * `srcSet`: the browser has already picked a candidate using the device
+     * pixel ratio, and `dpr_auto` would apply it a second time — a 2× screen
+     * would fetch the 4× image. Only useful for a lone `src` with no
+     * candidates to choose from.
+     */
+    dpr?: boolean
     /** Extra raw Cloudinary transformation components. */
     extra?: string[]
 }
@@ -28,14 +38,28 @@ type CldOptions = {
  * `g_auto`, so Cloudinary keeps the subject in frame instead of centre-cutting.
  */
 export function marketingImage(slot: string, options: CldOptions = {}): string {
-    const { width, ratio, extra = [] } = options
+    const { width, ratio, dpr = false, extra = [] } = options
 
-    const transforms = ["f_auto", "q_auto", "dpr_auto"]
+    const transforms = ["f_auto", "q_auto"]
+    if (dpr) transforms.push("dpr_auto")
     if (ratio) transforms.push("c_fill", `ar_${ratio}`, "g_auto")
     if (width) transforms.push(`w_${width}`)
     transforms.push(...extra)
 
     return `${BASE}/${transforms.join(",")}/campnav/marketing/${slot}.png`
+}
+
+/**
+ * Builds a `srcSet` of width candidates for one slot, so the browser fetches
+ * the size it actually needs on the screen and pixel density it has.
+ */
+export function marketingImageSrcSet(
+    slot: string,
+    { widths, ratio }: { widths: readonly number[]; ratio?: string }
+): string {
+    return widths
+        .map((width) => `${marketingImage(slot, { width, ratio })} ${width}w`)
+        .join(", ")
 }
 
 /** Every uploaded slot, with the alt text each one ships with. */

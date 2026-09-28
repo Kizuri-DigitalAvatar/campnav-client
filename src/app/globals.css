@@ -340,20 +340,9 @@
 
 @layer utilities {
 
-  /* Headline accent — blue → violet wash on the key phrase */
+  /* Headline accent on the key phrase. Stays within the blue range — running
+     it into violet read as a second brand colour in the largest type. */
   .text-gradient {
-    background-image: linear-gradient(100deg,
-        var(--primary) 0%,
-        color-mix(in oklch, var(--primary) 70%, oklch(0.606 0.219 292.7)) 55%,
-        oklch(0.656 0.19 292.7) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  /* Blue-only accent — same treatment as .text-gradient with the violet
-     taken out, for places where the purple reads as a second brand colour */
-  .text-gradient-blue {
     background-image: linear-gradient(100deg,
         var(--primary) 0%,
         color-mix(in oklch, var(--primary) 72%, oklch(0.696 0.14 235)) 58%,

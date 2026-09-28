@@ -11,6 +11,16 @@ import { Button } from "@/components/ui/button"
 import { Reveal } from "@/components/marketing/reveal"
 import { SectionHeading } from "@/components/marketing/section-heading"
 import { AUDIENCES, CONTACT, STEPS } from "@/components/marketing/content"
+import {
+    AUDIENCE_IMAGES,
+    MARKETING_IMAGES,
+    STEP_IMAGES,
+} from "@/components/marketing/images"
+import {
+    BACKDROP_WIDTHS,
+    CARD_WIDTHS,
+    MarketingImage,
+} from "@/components/marketing/marketing-image"
 
 const AUDIENCE_ICONS: Record<string, LucideIcon> = {
     UserRound,
@@ -30,16 +40,36 @@ export function HowItWorks() {
                 />
 
                 <div className="relative mt-14 grid gap-6 md:grid-cols-3 md:gap-8">
-                    {/* Connecting rail */}
+                    {/*
+                     * Connecting rail. Sits at the height the numerals now sit at,
+                     * below the image band that tops each card.
+                     */}
                     <div
-                        className="pointer-events-none absolute left-0 right-0 top-[3.25rem] hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block"
+                        className="pointer-events-none absolute left-0 right-0 top-[7.75rem] hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block"
                         aria-hidden="true"
                     />
 
                     {STEPS.map((step, index) => (
                         <Reveal key={step.title} delay={index * 110}>
                             <div className="relative h-full rounded-3xl border bg-card/70 p-6 shadow-card backdrop-blur-sm transition-transform duration-300 card-lift">
-                                <span className="flex size-12 items-center justify-center rounded-2xl tile-3d-primary text-lg font-black text-primary-foreground">
+                                <div className="relative -mx-6 -mt-6 h-32 overflow-hidden rounded-t-3xl">
+                                    <MarketingImage
+                                        slot={STEP_IMAGES[index]}
+                                        /* Decorative: the step title and body below
+                                           carry the meaning. */
+                                        alt=""
+                                        ratio="16:9"
+                                        sizes="(min-width: 768px) 33vw, 100vw"
+                                        widths={CARD_WIDTHS}
+                                        className="dark:brightness-90"
+                                    />
+                                    <div
+                                        className="absolute inset-0 bg-gradient-to-t from-card to-transparent"
+                                        aria-hidden="true"
+                                    />
+                                </div>
+
+                                <span className="relative -mt-7 flex size-12 items-center justify-center rounded-2xl tile-3d-primary text-lg font-black text-primary-foreground">
                                     {index + 1}
                                 </span>
                                 <h3 className="mt-5 text-lg font-bold tracking-tight">{step.title}</h3>
@@ -67,10 +97,32 @@ export function Audiences() {
                 <div className="mt-14 grid gap-6 md:grid-cols-3">
                     {AUDIENCES.map((audience, index) => {
                         const Icon = AUDIENCE_ICONS[audience.icon] ?? UserRound
+                        const portrait = AUDIENCE_IMAGES[audience.id]
                         return (
                             <Reveal key={audience.id} delay={index * 110}>
                                 <div className="group flex h-full flex-col rounded-3xl border bg-card p-7 shadow-card transition-all duration-300 card-lift hover:border-primary/40">
-                                    <span className="flex size-12 items-center justify-center rounded-2xl tile-3d text-primary transition-transform duration-300 group-hover:-translate-y-0.5">
+                                    {portrait && (
+                                        <div className="relative -mx-7 -mt-7 aspect-[3/4] max-h-72 overflow-hidden rounded-t-3xl">
+                                            <MarketingImage
+                                                slot={portrait.slot}
+                                                alt={portrait.alt}
+                                                ratio="3:4"
+                                                sizes="(min-width: 768px) 33vw, 100vw"
+                                                widths={CARD_WIDTHS}
+                                                className="dark:brightness-90"
+                                            />
+                                            <div
+                                                className="absolute inset-0 bg-gradient-to-t from-card to-transparent"
+                                                aria-hidden="true"
+                                            />
+                                        </div>
+                                    )}
+
+                                    <span
+                                        className={`relative flex size-12 items-center justify-center rounded-2xl tile-3d text-primary transition-transform duration-300 group-hover:-translate-y-0.5 ${
+                                            portrait ? "-mt-7" : ""
+                                        }`}
+                                    >
                                         <Icon className="size-5" />
                                     </span>
                                     <h3 className="mt-5 text-xl font-black tracking-tight">{audience.title}</h3>
@@ -100,6 +152,23 @@ export function Audiences() {
 export function CtaBand() {
     return (
         <section className="aurora relative overflow-hidden py-20 md:py-28">
+            {/*
+             * Camp road plate, masked out of the middle so the centred headline
+             * and buttons sit on clean ground and only the edges carry texture.
+             */}
+            <div
+                className="pointer-events-none absolute inset-0 opacity-[0.12] dark:opacity-[0.20] [mask-image:radial-gradient(ellipse_at_center,transparent_25%,black_100%)] [-webkit-mask-image:radial-gradient(ellipse_at_center,transparent_25%,black_100%)]"
+                aria-hidden="true"
+            >
+                <MarketingImage
+                    slot={MARKETING_IMAGES.ctaBackdrop.slot}
+                    alt=""
+                    ratio="8:3"
+                    sizes="100vw"
+                    widths={BACKDROP_WIDTHS}
+                />
+            </div>
+
             <div className="relative z-10 mx-auto w-full max-w-4xl px-4 text-center">
                 <Reveal>
                     <h2 className="text-3xl font-black tracking-tighter sm:text-4xl md:text-5xl md:leading-[1.05]">

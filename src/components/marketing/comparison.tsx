@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { Check, X } from "lucide-react"
 import { COMPARISON } from "@/components/marketing/content"
+import { MARKETING_IMAGES } from "@/components/marketing/images"
+import { CARD_WIDTHS, MarketingImage } from "@/components/marketing/marketing-image"
 import { cn } from "@/lib/utils"
 
 type Side = "before" | "after"
@@ -40,12 +42,35 @@ export function Comparison() {
             <div
                 key={side}
                 className={cn(
-                    "mt-6 rounded-3xl border p-6 shadow-card transition-colors duration-300 md:p-8",
+                    "mt-6 overflow-hidden rounded-3xl border shadow-card transition-colors duration-300",
                     "animate-in fade-in slide-in-from-bottom-2 duration-400",
                     isAfter ? "border-primary/30 bg-card" : "bg-muted/40"
                 )}
             >
-                <ul className="space-y-4">
+                {/*
+                 * Only the "after" side has a photograph — the matching
+                 * radio-and-paper shot has not been generated yet, so the
+                 * "before" panel stays text-only rather than borrowing an
+                 * image that shows the wrong thing.
+                 */}
+                {isAfter && (
+                    <div className="relative h-36 sm:h-44">
+                        <MarketingImage
+                            slot={MARKETING_IMAGES.afterDispatch.slot}
+                            alt={MARKETING_IMAGES.afterDispatch.alt}
+                            ratio="4:3"
+                            sizes="(min-width: 768px) 768px, 100vw"
+                            widths={CARD_WIDTHS}
+                            className="dark:brightness-90"
+                        />
+                        <div
+                            className="absolute inset-0 bg-gradient-to-t from-card to-transparent"
+                            aria-hidden="true"
+                        />
+                    </div>
+                )}
+
+                <ul className="space-y-4 p-6 md:p-8">
                     {active.points.map((point, i) => (
                         <li
                             key={point}

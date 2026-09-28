@@ -6,12 +6,38 @@ import { ImpactBand } from "@/components/marketing/impact-band"
 import { Faq } from "@/components/marketing/faq"
 import { Audiences, CtaBand, HowItWorks } from "@/components/marketing/sections"
 import { SectionHeading } from "@/components/marketing/section-heading"
+import { MARKETING_IMAGES, marketingImage } from "@/components/marketing/images"
+
+const OG_IMAGE = {
+    url: marketingImage(MARKETING_IMAGES.ogCover.slot, { width: 1200, ratio: "40:21" }),
+    width: 1200,
+    height: 630,
+    alt: MARKETING_IMAGES.ogCover.alt,
+}
 
 export const metadata: Metadata = {
     title: "CAMPNAV — Camp operations in one place",
     description:
         "CAMPNAV connects residents, staff and management on one platform: service requests, staff dispatch, meals, maintenance, HSE reporting and live occupancy. Book a demo.",
     alternates: { canonical: "/" },
+    // Next replaces the whole `openGraph` object rather than merging into the
+    // root layout's, so the inherited fields are repeated here on purpose.
+    openGraph: {
+        type: "website",
+        siteName: "CAMPNAV",
+        url: "/",
+        title: "CAMPNAV — Camp operations in one place",
+        description:
+            "One platform for resident requests, staff dispatch, meals, maintenance, HSE and occupancy.",
+        images: [OG_IMAGE],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "CAMPNAV — Camp operations in one place",
+        description:
+            "One platform for resident requests, staff dispatch, meals, maintenance, HSE and occupancy.",
+        images: [OG_IMAGE],
+    },
 }
 
 export default function LandingPage() {
