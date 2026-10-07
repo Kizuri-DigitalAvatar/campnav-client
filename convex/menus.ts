@@ -95,7 +95,7 @@ export const sendWeeklyMenuReminders = internalMutation({
         if (!hasNextWeek) {
             await ctx.runMutation(api.notifications.sendRoleNotification, {
                 role: "admin",
-                type: "reminder",
+                type: "menu_reminder",
                 message:
                     "⏰ The weekly meal menu expires tomorrow. Set next week's menu under Room Service → Menus, or re-save the current one to keep it.",
             });

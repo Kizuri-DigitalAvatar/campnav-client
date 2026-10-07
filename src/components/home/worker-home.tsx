@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../convex/_generated/api"
-import { ClipboardList, Clock, MapPin, CheckCircle, PlayCircle, Megaphone, ArrowRight } from "lucide-react"
+import { ClipboardList, ClipboardCheck, Clock, MapPin, CheckCircle, PlayCircle, Megaphone, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { TaskCard } from "@/components/task-card"
 import { Id } from "../../../convex/_generated/dataModel"
@@ -21,6 +21,8 @@ export function WorkerHome({ user }: { user: any }) {
     )
 
     const announcements = useQuery(api.announcements.list, { priority: "all" })
+    const preventive = useQuery(api.preventive.listForStaff, { staffId: user._id })
+    const preventiveDue = (preventive || []).filter((p: any) => p.nextDue - Date.now() <= 24 * 60 * 60 * 1000).length
 
     const acknowledgeAssignment = useMutation(api.tasks.acknowledgeAssignment)
     const startAssignment = useMutation(api.tasks.startAssignment)
@@ -126,7 +128,7 @@ export function WorkerHome({ user }: { user: any }) {
                 <div className="flex items-center justify-between px-1">
                     <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Focus Task</h2>
                     {assignments.length > 0 && (
-                        <Link href="/campnav/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
+                        <Link href="/app/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
                             Go to Dashboard <ArrowRight size={10} />
                         </Link>
                     )}
@@ -161,7 +163,7 @@ export function WorkerHome({ user }: { user: any }) {
                 <section className="space-y-3">
                     <div className="flex items-center justify-between px-1">
                         <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Recent Assignments</h2>
-                        <Link href="/campnav/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
+                        <Link href="/app/assignments" className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-1">
                             View All <ArrowRight size={10} />
                         </Link>
                     </div>
@@ -172,7 +174,7 @@ export function WorkerHome({ user }: { user: any }) {
                             .map((task: any) => (
                                 <Link
                                     key={task._id}
-                                    href={`/campnav/assignments/${task._id}`}
+                                    href={`/app/assignments/${task._id}`}
                                     className="flex items-center gap-3 bg-card border rounded-2xl p-4 shadow-sm hover:border-primary/50 transition-colors"
                                 >
                                     <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${
@@ -229,11 +231,31 @@ export function WorkerHome({ user }: { user: any }) {
                 </section>
             )}
 
+            {/* Preventive maintenance assigned to this staff member */}
+            {preventive && preventive.length > 0 && (
+                <Link
+                    href="/app/preventive"
+                    className="flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm hover:border-primary/40 transition-colors"
+                >
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <ClipboardCheck className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold">Preventive Maintenance</p>
+                        <p className="text-[11px] text-muted-foreground">
+                            {preventive.length} scheduled job{preventive.length === 1 ? "" : "s"}
+                            {preventiveDue > 0 && <span className="text-amber-600 font-semibold"> · {preventiveDue} due now</span>}
+                        </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+            )}
+
             {/* Announcements (Same as visitor but maybe less prominent) */}
             <section className="space-y-4">
                 <div className="flex items-center justify-between px-1">
                     <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Updates</h2>
-                    <Link href="/campnav/updates" className="text-[10px] font-black uppercase tracking-widest text-primary">View All</Link>
+                    <Link href="/app/updates" className="text-[10px] font-black uppercase tracking-widest text-primary">View All</Link>
                 </div>
 
                 <div className="space-y-3">

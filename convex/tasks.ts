@@ -70,7 +70,15 @@ export const assignStaffToRequest = mutation({
                     await ctx.db.patch(existingTask.staffId, { currentTaskId: undefined });
                 }
             }
-            await ctx.db.patch(existingTask._id, { staffId: args.staffId, status: "pending" });
+            // New assignee: restart their reminder schedule from now
+            await ctx.db.patch(existingTask._id, {
+                staffId: args.staffId,
+                status: "pending",
+                assignedAt: Date.now(),
+                acknowledgedAt: undefined,
+                reminderCount: 0,
+                lastReminderSent: undefined,
+            });
             await ctx.db.patch(args.staffId, { currentTaskId: existingTask._id });
             taskId = existingTask._id;
         } else {

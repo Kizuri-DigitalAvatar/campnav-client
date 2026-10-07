@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
 export const list = query({
     args: {
@@ -56,7 +57,19 @@ export const create = mutation({
         isAvailable: v.boolean(),
     },
     handler: async (ctx, args) => {
-        return await ctx.db.insert("products", args);
+        const id = await ctx.db.insert("products", args);
+
+        // Announce new products to residents and guests, linking straight to them
+        if (args.isAvailable) {
+            const isRoomService = args.service === "room-service" || args.service === "room_service";
+            await ctx.runMutation(api.notifications.sendRoleNotification, {
+                role: "resident",
+                type: "new_product",
+                message: `🆕 New in the ${isRoomService ? "room service menu" : "shop"}: ${args.name} (Le ${args.price.toFixed(2)}). Tap to take a look.`,
+                link: isRoomService ? "/app/room-service" : `/app/shop?product=${id}`,
+            });
+        }
+        return id;
     },
 });
 

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider"
 import { CampnavLogo } from "@/components/campnav-logo"
 
-const PUBLIC_PATHS = new Set(["/campnav/welcome", "/campnav/login"])
+const PUBLIC_PATHS = new Set(["/app/welcome", "/app/login"])
 
 // Full-screen buffer shown while auth is being verified or a redirect is in flight.
 // Nothing protected is ever rendered behind it.
@@ -35,12 +35,12 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     if (loading) return
 
     if (!user && !isPublic) {
-      router.replace("/campnav/welcome")
+      router.replace("/app/welcome")
       return
     }
 
     if (user && isPublic) {
-      router.replace("/campnav")
+      router.replace("/app")
     }
   }, [user, loading, isPublic, router])
 

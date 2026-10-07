@@ -43,6 +43,10 @@ function typeMeta(type: string) {
         case "completion": return { icon: CheckCircle, label: "Request Completed" }
         case "room_assignment": return { icon: Bell, label: "Room Assigned" }
         case "rnr_countdown": return { icon: Calendar, label: "RnR Countdown" }
+        case "preventive": return { icon: ClipboardList, label: "Preventive Maintenance" }
+        case "new_product": return { icon: Megaphone, label: "New Product" }
+        case "order": return { icon: CheckCircle, label: "Order Placed" }
+        case "maintenance_notice": return { icon: Megaphone, label: "Scheduled Maintenance" }
         default: return { icon: Bell, label: "Notification" }
     }
 }
@@ -76,16 +80,22 @@ export function NotificationBell() {
 
     const handleClick = (n: any) => {
         setOpen(false)
-        if (n.assignmentId && worker) {
-            router.push(`/campnav/assignments/${n.assignmentId}`)
+        if (n.link) {
+            router.push(n.link)
+        } else if (n.type === "preventive" && worker) {
+            router.push("/app/preventive")
+        } else if (n.type === "maintenance_notice") {
+            router.push("/app/updates")
+        } else if (n.assignmentId && worker) {
+            router.push(`/app/assignments/${n.assignmentId}`)
         } else if (n.requestId && !worker) {
-            router.push(`/campnav/requests/${n.requestId}`)
+            router.push(`/app/requests/${n.requestId}`)
         } else if (n.type === "announcement" || n.type === "activity") {
-            router.push("/campnav/updates")
+            router.push("/app/updates")
         } else if (worker) {
-            router.push("/campnav/assignments")
+            router.push("/app/assignments")
         } else {
-            router.push("/campnav/requests")
+            router.push("/app/requests")
         }
     }
 

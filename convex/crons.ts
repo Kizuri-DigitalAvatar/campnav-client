@@ -3,10 +3,11 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-// Check for unacknowledged assignments every 5 minutes
+// Staff reminder schedule lives in cron.ts; check every minute so the
+// 10- and 30-minute reminders land on time
 crons.interval(
     "check unacknowledged assignments",
-    { minutes: 5 },
+    { minutes: 1 },
     internal.cron.checkUnacknowledgedAssignments
 );
 
@@ -30,6 +31,20 @@ crons.weekly(
     "weekly meal menu reminders",
     { dayOfWeek: "saturday", hourUTC: 9, minuteUTC: 0 },
     internal.menus.sendWeeklyMenuReminders
+);
+
+// Morning nudge to admins about residents/staff who still have no room
+crons.daily(
+    "missing room reminders",
+    { hourUTC: 7, minuteUTC: 0 },
+    internal.users.remindMissingRooms
+);
+
+// Preventive maintenance: due-tomorrow / overdue reminders to assignees, summary to admins
+crons.daily(
+    "preventive maintenance reminders",
+    { hourUTC: 6, minuteUTC: 0 },
+    internal.preventive.sendDueReminders
 );
 
 export default crons;

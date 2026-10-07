@@ -75,7 +75,7 @@ export function Hero() {
                                 </Link>
                             </Button>
                             <Button asChild variant="outline" size="lg" className="h-12 rounded-full px-7 text-base">
-                                <Link href="/campnav/login">
+                                <Link href="/app/login">
                                     <LogIn className="size-4" />
                                     Log in
                                 </Link>

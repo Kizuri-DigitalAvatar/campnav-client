@@ -11,15 +11,15 @@ import { isWorker } from "@/components/role-guard"
 
 // Staff cannot request services — these routes are resident/guest only
 const STAFF_BLOCKED_ROUTES = [
-    "/campnav/services",
-    "/campnav/room-service",
-    "/campnav/laundry",
-    "/campnav/house-keeping",
-    "/campnav/maintenance",
-    "/campnav/delivery",
-    "/campnav/meals",
-    "/campnav/facilities",
-    "/campnav/requests",
+    "/app/services",
+    "/app/room-service",
+    "/app/laundry",
+    "/app/house-keeping",
+    "/app/maintenance",
+    "/app/delivery",
+    "/app/meals",
+    "/app/facilities",
+    "/app/requests",
 ]
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -35,7 +35,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (isBlockedForStaff) {
-            router.replace("/campnav")
+            router.replace("/app")
         }
     }, [isBlockedForStaff, router])
 

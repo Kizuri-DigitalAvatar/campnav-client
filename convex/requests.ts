@@ -353,3 +353,194 @@ export const updateOfficeUse = mutation({
         });
     },
 });
+
+// Why a request has (or hasn't) got a staff member on it: every staff member's
+// availability, plus whether they were notified about this task and ignored it.
+export const getStaffingReport = query({
+    args: { id: v.id("requests") },
+    handler: async (ctx, args) => {
+        const request = await ctx.db.get(args.id);
+        if (!request) return null;
+
+        const now = Date.now();
+        const dutyType = request.type.toLowerCase();
+
+        const task = await ctx.db
+            .query("tasks")
+            .withIndex("by_requestId", (q) => q.eq("requestId", args.id))
+            .first();
+
+        const requester = await ctx.db.get(request.userId);
+
+        // Manual-assignment notifications only carry the task id, so look up both
+        const byRequest = await ctx.db
+            .query("notifications")
+            .withIndex("by_requestId", (q) => q.eq("requestId", args.id))
+            .collect();
+        const byTask = task
+            ? await ctx.db
+                .query("notifications")
+                .withIndex("by_assignmentId", (q) => q.eq("assignmentId", task._id))
+                .collect()
+            : [];
+        const notifications = [...new Map([...byRequest, ...byTask].map((n) => [n._id, n])).values()]
+            // Newest first, so each staff member's latest notification wins
+            .sort((a, b) => b._creationTime - a._creationTime);
+        const adminAlerts = notifications.filter((n) => n.type === "admin_alert" && n.channel === "push");
+
+        const allStaff = (await Promise.all(
+            ["camp-staff", "staff"].map((role) =>
+                ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", role)).collect()
+            )
+        )).flat();
+
+        const resolveImage = async (image?: string) => {
+            if (!image) return null;
+            if (image.startsWith("http")) return image;
+            try { return await ctx.storage.getUrl(image); } catch { return null; }
+        };
+
+        const staff = await Promise.all(allStaff.map(async (s) => {
+            // ── Availability ──
+            const reasons: string[] = [];
+            let availability: "available" | "busy" | "on_leave" | "off_site" = "available";
+
+            let currentTask: null | {
+                _id: string; roomNumber: string; serviceType: string; status: string; assignedAt: number
+            } = null;
+            let staleLock = false;
+            if (s.currentTaskId && s.currentTaskId !== task?._id) {
+                const ct = await ctx.db.get(s.currentTaskId);
+                if (ct && !["completed", "rated", "cancelled"].includes(ct.status)) {
+                    currentTask = {
+                        _id: ct._id, roomNumber: ct.roomNumber, serviceType: ct.serviceType,
+                        status: ct.status, assignedAt: ct.assignedAt,
+                    };
+                } else {
+                    // Points at a finished or deleted task — they're actually free
+                    staleLock = true;
+                }
+            }
+
+            const onLeave = typeof s.onLeaveUntil === "number" && s.onLeaveUntil > now;
+            if (onLeave) {
+                availability = "on_leave";
+                reasons.push(`On leave until ${new Date(s.onLeaveUntil!).toLocaleDateString()}`);
+            }
+            if (currentTask) {
+                if (availability === "available") availability = "busy";
+                reasons.push(
+                    currentTask.status === "pending"
+                        ? `Holding an unaccepted ${currentTask.serviceType.replace("_", " ")} task (Room ${currentTask.roomNumber})`
+                        : `Working on ${currentTask.serviceType.replace("_", " ")} task (Room ${currentTask.roomNumber}) — ${currentTask.status.replace("_", " ")}`
+                );
+            }
+            if (!s.isOnSite) {
+                if (availability === "available") availability = "off_site";
+                reasons.push("Marked off site");
+            }
+            if (staleLock) reasons.push("Had a stale task lock (task already finished)");
+
+            const duties = s.assignedDuties || [];
+            const dutyMatch = duties.includes(dutyType);
+            if (!dutyMatch) reasons.push(`Not assigned ${dutyType.replace("_", " ")} duties`);
+
+            // Every unfinished task on their plate (other than this one), accepted first
+            const openTasks = (await ctx.db
+                .query("tasks")
+                .withIndex("by_staffId", (q) => q.eq("staffId", s._id))
+                .collect())
+                .filter((t) => t._id !== task?._id && !["completed", "rated", "cancelled"].includes(t.status))
+                .map((t) => ({
+                    _id: t._id,
+                    requestId: t.requestId,
+                    roomNumber: t.roomNumber,
+                    serviceType: t.serviceType,
+                    description: t.description,
+                    status: t.status,
+                    accepted: t.status !== "pending",
+                    assignedAt: t.assignedAt,
+                    acknowledgedAt: t.acknowledgedAt,
+                    startedAt: t.startedAt,
+                }))
+                .sort((a, b) =>
+                    Number(b.accepted) - Number(a.accepted) ||
+                    (b.acknowledgedAt ?? b.assignedAt) - (a.acknowledgedAt ?? a.assignedAt)
+                );
+
+            // ── Engagement with this request ──
+            const push = notifications.find((n) => n.userId === s._id && n.channel === "push" && n.type !== "admin_alert");
+            const isAssignee = task?.staffId === s._id;
+            const accepted = isAssignee && !!task && task.status !== "pending";
+            const viewedTask = !!task?.viewedBy?.includes(s._id);
+
+            let engagement: "accepted" | "viewed_ignored" | "seen_ignored" | "popup_ignored" | "not_seen" | "not_notified";
+            if (accepted) engagement = "accepted";
+            else if (viewedTask) engagement = "viewed_ignored";
+            else if (push?.readAt) engagement = "seen_ignored";
+            else if (push?.deliveredAt || push?.status === "delivered") engagement = "popup_ignored";
+            else if (push) engagement = "not_seen";
+            else engagement = "not_notified";
+
+            return {
+                _id: s._id,
+                name: s.name,
+                email: s.email,
+                imageUrl: await resolveImage(s.image),
+                department: s.department,
+                assignedDuties: duties,
+                isOnSite: !!s.isOnSite,
+                onLeaveUntil: onLeave ? s.onLeaveUntil : undefined,
+                availability,
+                reasons,
+                dutyMatch,
+                currentTask,
+                openTasks,
+                isAssignee,
+                engagement,
+                notifiedAt: push?._creationTime,
+                popupShownAt: push?.deliveredAt,
+                notificationReadAt: push?.readAt,
+                viewedTask,
+            };
+        }));
+
+        const rank = { available: 0, off_site: 1, busy: 2, on_leave: 3 } as const;
+        staff.sort((a, b) =>
+            Number(b.isAssignee) - Number(a.isAssignee) ||
+            Number(b.dutyMatch) - Number(a.dutyMatch) ||
+            rank[a.availability] - rank[b.availability] ||
+            (a.name || "").localeCompare(b.name || "")
+        );
+
+        let assignee = null;
+        if (task?.staffId) {
+            const a = staff.find((s) => s._id === task.staffId);
+            assignee = a ? { _id: a._id, name: a.name } : null;
+        }
+
+        return {
+            request: { ...request, requesterName: requester?.name ?? "Unknown" },
+            task: task ? {
+                _id: task._id, status: task.status, assignedAt: task.assignedAt,
+                acknowledgedAt: task.acknowledgedAt, staffId: task.staffId,
+                reminderCount: (task as any).reminderCount ?? 0,
+            } : null,
+            assignee,
+            dutyType,
+            alertedAt: adminAlerts.length > 0 ? Math.min(...adminAlerts.map((n) => n._creationTime)) : undefined,
+            staff,
+            summary: {
+                total: staff.length,
+                dutyMatched: staff.filter((s) => s.dutyMatch).length,
+                available: staff.filter((s) => s.availability === "available").length,
+                availableMatched: staff.filter((s) => s.availability === "available" && s.dutyMatch).length,
+                busy: staff.filter((s) => s.availability === "busy").length,
+                onLeave: staff.filter((s) => s.availability === "on_leave").length,
+                offSite: staff.filter((s) => s.availability === "off_site").length,
+                notified: staff.filter((s) => s.engagement !== "not_notified").length,
+                ignored: staff.filter((s) => ["viewed_ignored", "seen_ignored", "popup_ignored"].includes(s.engagement)).length,
+            },
+        };
+    },
+});

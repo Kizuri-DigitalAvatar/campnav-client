@@ -7,7 +7,7 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
 });
 
-// Routes the app served at the top level before it moved under /campnav.
+// Routes the app served at the top level before it moved under /app.
 // Kept as redirects so existing bookmarks, deep links in old notification
 // emails and already-installed PWAs keep working.
 const LEGACY_APP_ROUTES = [
@@ -39,14 +39,23 @@ const nextConfig: NextConfig = {
     return [
       {
         source: `/:section(${LEGACY_APP_ROUTES})/:rest*`,
-        destination: "/campnav/:section/:rest*",
+        destination: "/app/:section/:rest*",
         permanent: false,
       },
       {
         // `/home` only ever existed between the landing page landing and this
         // move; redirect it too so no in-flight link breaks.
         source: "/home",
-        destination: "/campnav",
+        destination: "/app",
+        permanent: false,
+      },
+      {
+        // The app lived under `/campnav` before moving to `/app`. Notification
+        // emails already delivered carry `/campnav/...` deep links, and PWAs
+        // installed in that window have `/campnav` as their start_url, so this
+        // has to keep resolving rather than 404.
+        source: "/campnav/:rest*",
+        destination: "/app/:rest*",
         permanent: false,
       },
     ];

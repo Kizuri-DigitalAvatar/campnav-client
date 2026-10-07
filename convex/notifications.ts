@@ -21,6 +21,7 @@ export const sendRoleNotification = mutation({
         requestId: v.optional(v.id("requests")),
         type: v.string(), // "assignment", "reminder", "general"
         message: v.string(),
+        link: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         // Find all users with this role (including alias role names)
@@ -49,6 +50,7 @@ export const sendRoleNotification = mutation({
                         channel: "push",
                         status: "pending",
                         message: args.message,
+                        link: args.link,
                     })
                 );
             }
@@ -63,6 +65,7 @@ export const sendRoleNotification = mutation({
                         channel: "email",
                         status: "pending",
                         message: args.message,
+                        link: args.link,
                     })
                 );
             }
@@ -77,6 +80,7 @@ export const sendRoleNotification = mutation({
                         channel: "sms",
                         status: "pending",
                         message: args.message,
+                        link: args.link,
                     })
                 );
             }
@@ -273,11 +277,12 @@ export const notifyAdminUnresponsive = mutation({
         message: v.string(),
     },
     handler: async (ctx, args) => {
-        // Get all admin users
-        const admins = await ctx.db
-            .query("users")
-            .withIndex("by_role", (q) => q.eq("role", "admin"))
-            .collect();
+        // Get all admin users (including camp managers / supervisors)
+        const admins = (await Promise.all(
+            ROLE_ALIASES.admin.map((role) =>
+                ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", role)).collect()
+            )
+        )).flat();
 
         const notifications = [];
 
