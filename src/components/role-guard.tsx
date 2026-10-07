@@ -14,7 +14,7 @@ export function RoleGuard({
     children,
     allowedRoles,
     currentUserRole,
-    redirectTo = "/campnav",
+    redirectTo = "/app",
 }: RoleGuardProps) {
     const router = useRouter()
 

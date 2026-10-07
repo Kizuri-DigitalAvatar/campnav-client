@@ -46,6 +46,13 @@ export const create = mutation({
     },
     handler: async (ctx, args) => {
         const { status = "available", ...roomData } = args;
+        const existing = await ctx.db
+            .query("rooms")
+            .filter((q) => q.eq(q.field("roomNumber"), args.roomNumber))
+            .first();
+        if (existing) {
+            throw new Error(`Room ${args.roomNumber} already exists`);
+        }
         const roomId = await ctx.db.insert("rooms", {
             ...roomData,
             status,
@@ -76,6 +83,11 @@ export const update = mutation({
             updateData.occupantId = occupantId === null ? undefined : occupantId;
         }
         await ctx.db.patch(id, updateData);
+        await syncOccupantRoomNumbers(
+            ctx, room,
+            occupantId === undefined ? room.occupantId : (occupantId ?? undefined),
+            args.roomNumber ?? room.roomNumber,
+        );
         await recordOccupancySnapshot(ctx);
 
         // If occupantId changed and is a user
@@ -137,6 +149,7 @@ export const assignOccupant = mutation({
         const status = args.userId ? "occupied" : "available";
         const occupantId = args.userId === null ? undefined : args.userId;
         await ctx.db.patch(args.roomId, { occupantId, status });
+        await syncOccupantRoomNumbers(ctx, room, occupantId, room.roomNumber);
         await recordOccupancySnapshot(ctx);
 
         // If occupant assigned and it changed
@@ -280,7 +293,7 @@ async function calculateOccupancyStats(ctx: QueryCtx | MutationCtx) {
     };
 }
 
-async function recordOccupancySnapshot(ctx: MutationCtx) {
+export async function recordOccupancySnapshot(ctx: MutationCtx) {
     const date = new Date().toISOString().split("T")[0];
     const stats = await calculateOccupancyStats(ctx);
     const existing = await ctx.db
@@ -300,4 +313,26 @@ async function recordOccupancySnapshot(ctx: MutationCtx) {
     }
 
     await ctx.db.insert("occupancySnapshots", snapshot);
+}
+
+// Keep users.roomNumber (what the client app reads) in step with room occupancy
+async function syncOccupantRoomNumbers(
+    ctx: MutationCtx,
+    before: Doc<"rooms">,
+    newOccupantId: Doc<"rooms">["occupantId"],
+    newRoomNumber: string,
+) {
+    const prevId = before.occupantId;
+    if (prevId && prevId !== newOccupantId) {
+        const prev = await ctx.db.get(prevId);
+        if (prev && prev.roomNumber === before.roomNumber) {
+            await ctx.db.patch(prevId, { roomNumber: undefined });
+        }
+    }
+    if (newOccupantId) {
+        const occupant = await ctx.db.get(newOccupantId);
+        if (occupant && occupant.roomNumber !== newRoomNumber) {
+            await ctx.db.patch(newOccupantId, { roomNumber: newRoomNumber, missingRoomReportedAt: undefined });
+        }
+    }
 }

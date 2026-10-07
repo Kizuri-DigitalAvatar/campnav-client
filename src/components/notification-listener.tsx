@@ -41,6 +41,10 @@ export function NotificationListener() {
                 notification.type === "completion" ? "Request Completed" :
                 notification.type === "announcement" ? "Announcement" :
                 notification.type === "rnr_countdown" ? "✈️ RnR Countdown" :
+                notification.type === "preventive" ? "🛠️ Preventive Maintenance" :
+                notification.type === "new_product" ? "🆕 New Product" :
+                notification.type === "order" ? "🛍️ Order Placed For You" :
+                notification.type === "maintenance_notice" ? "🛠️ Scheduled Maintenance" :
                 "Notification"
 
             // Show toast
@@ -49,17 +53,21 @@ export function NotificationListener() {
                 icon: <Bell className="w-4 h-4 text-primary" />,
                 duration: 6000,
                 // No action button for room_assignment – it's informational
-                action: notification.type === "room_assignment" || notification.type === "rnr_countdown"
+                action: notification.type === "room_assignment" || notification.type === "rnr_countdown" || notification.type === "maintenance_notice"
                     ? undefined
                     : {
                         label: "Details",
                         onClick: () => {
-                            if (notification.assignmentId) {
-                                router.push(`/campnav/assignments/${notification.assignmentId}`)
+                            if (notification.link) {
+                                router.push(notification.link)
+                            } else if (notification.type === "preventive") {
+                                router.push("/app/preventive")
+                            } else if (notification.assignmentId) {
+                                router.push(`/app/assignments/${notification.assignmentId}`)
                             } else if (notification.requestId) {
-                                router.push(`/campnav/requests/${notification.requestId}`)
+                                router.push(`/app/requests/${notification.requestId}`)
                             } else {
-                                router.push("/campnav/requests")
+                                router.push("/app/requests")
                             }
                         },
                     },

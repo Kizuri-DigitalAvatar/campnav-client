@@ -6,22 +6,22 @@ const items = [
   {
     icon: Utensils,
     label: "Food",
-    href: "/campnav/room-service",
+    href: "/app/room-service",
   },
   {
     icon: BedDouble,
     label: "Room Service",
-    href: "/campnav/room-service",
+    href: "/app/room-service",
   },
   {
     icon: Wrench,
     label: "Maintenance",
-    href: "/campnav/maintenance",
+    href: "/app/maintenance",
   },
   {
     icon: Newspaper,
     label: "News",
-    href: "/campnav/updates",
+    href: "/app/updates",
   },
 ]
 

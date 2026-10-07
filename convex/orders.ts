@@ -197,3 +197,65 @@ export const listForUser = query({
     }));
   },
 });
+
+// Admin places an order on behalf of a resident/guest. Prices come from the
+// product catalogue and delivery goes to the resident's assigned room.
+export const createForResident = mutation({
+  args: {
+    userId: v.id("users"),
+    source: v.string(), // "shop" | "room_service"
+    items: v.array(v.object({ productId: v.id("products"), quantity: v.number() })),
+    note: v.optional(v.string()),
+    placedBy: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const resident = await ctx.db.get(args.userId);
+    if (!resident) throw new Error("Resident not found");
+    if (!resident.roomNumber) {
+      throw new Error(`${resident.name} has no room assigned. Set their room on the Users page first.`);
+    }
+
+    const lines = (await Promise.all(args.items
+      .filter((i) => i.quantity > 0)
+      .map(async (i) => ({ product: await ctx.db.get(i.productId), quantity: Math.floor(i.quantity) }))
+    )).filter((l) => l.product);
+    if (lines.length === 0) throw new Error("Add at least one item to the order");
+
+    const unavailable = lines.filter((l) => !l.product!.isAvailable);
+    if (unavailable.length > 0) {
+      throw new Error(`Not available: ${unavailable.map((l) => l.product!.name).join(", ")}`);
+    }
+
+    const itemsText = lines.map((l) => `${l.product!.name} x${l.quantity}`).join(", ");
+    const note = args.note?.trim();
+    const total = lines.reduce((sum, l) => sum + l.product!.price * l.quantity, 0);
+    const quantity = lines.reduce((sum, l) => sum + l.quantity, 0);
+
+    const orderId = await ctx.db.insert("orders", {
+      userId: args.userId,
+      source: args.source,
+      summary: note ? `${itemsText} - ${note}` : itemsText,
+      total,
+      roomNumber: resident.roomNumber,
+      status: "pending",
+      quantity,
+      productImage: lines.length === 1 ? lines[0].product!.image : undefined,
+      createdAt: Date.now(),
+      placedBy: args.placedBy,
+      note,
+    });
+
+    // Tell the resident something is on its way
+    const prefs = resident.notificationPreferences || { push: true, email: true, sms: true };
+    const label = args.source === "room_service" ? "room service" : "shop";
+    const message = `🛍️ The camp team placed a ${label} order for you: ${itemsText}. It will be delivered to Room ${resident.roomNumber}.`;
+    if (prefs.push) {
+      await ctx.db.insert("notifications", { userId: args.userId, type: "order", channel: "push", status: "pending", message, link: "/app/history" });
+    }
+    if (prefs.email && resident.email) {
+      await ctx.db.insert("notifications", { userId: args.userId, type: "order", channel: "email", status: "pending", message });
+    }
+
+    return orderId;
+  },
+});

@@ -13,17 +13,17 @@ export function BottomNav() {
 
     const navItems = user && isWorker(user.role)
         ? [
-            { href: "/campnav", label: "Home", icon: Home },
-            { href: "/campnav/assignments", label: "Tasks", icon: ClipboardList },
-            { href: "/campnav/available-tasks", label: "Available", icon: Inbox },
-            { href: "/campnav/history", label: "History", icon: History },
-            { href: "/campnav/profile", label: "Profile", icon: User },
+            { href: "/app", label: "Home", icon: Home },
+            { href: "/app/assignments", label: "Tasks", icon: ClipboardList },
+            { href: "/app/available-tasks", label: "Available", icon: Inbox },
+            { href: "/app/history", label: "History", icon: History },
+            { href: "/app/profile", label: "Profile", icon: User },
         ]
         : [
-            { href: "/campnav", label: "Home", icon: Home },
-            { href: "/campnav/services", label: "Services", icon: Grid2X2 },
-            { href: "/campnav/updates", label: "Updates", icon: Bell },
-            { href: "/campnav/profile", label: "Profile", icon: User },
+            { href: "/app", label: "Home", icon: Home },
+            { href: "/app/services", label: "Services", icon: Grid2X2 },
+            { href: "/app/updates", label: "Updates", icon: Bell },
+            { href: "/app/profile", label: "Profile", icon: User },
         ]
 
     if (loading) {

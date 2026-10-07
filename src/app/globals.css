@@ -246,7 +246,15 @@
 
   /* Resting glass card with realistic layered shadow */
   .glass-card {
-    background: color-mix(in oklch, var(--card) 88%, transparent);
+    /*
+     * `background-color`, never the `background` shorthand. This class sits in
+     * the same cascade layer as Tailwind's utilities and is emitted after them,
+     * so it wins any tie — and the shorthand reset `background-image` to `none`,
+     * silently deleting the gradient from every `<Card className="bg-gradient-*">`
+     * in the app. The card then fell back to this near-white fill, which made
+     * `text-primary-foreground` invisible in light mode.
+     */
+    background-color: color-mix(in oklch, var(--card) 88%, transparent);
     backdrop-filter: blur(16px) saturate(1.3);
     -webkit-backdrop-filter: blur(16px) saturate(1.3);
     border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);

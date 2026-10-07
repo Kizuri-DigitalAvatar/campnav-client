@@ -1,4 +1,7 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { recordOccupancySnapshot } from "./rooms";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { paginationOptsValidator } from "convex/server";
@@ -20,12 +23,18 @@ export const upsert = mutation({
     durationEnd: v.optional(v.number()),
     isOnSite: v.optional(v.boolean()),
     campStaffId: v.optional(v.string()),
+    roomNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("users")
       .filter((q) => q.eq(q.field("email"), args.email))
       .first();
+
+    const roomNumber = args.roomNumber?.trim() || undefined;
+    if (roleNeedsRoom(args.role) && !roomNumber) {
+      throw new Error("A room must be assigned to residents and staff");
+    }
 
     const updateData: any = {
       name: args.name,
@@ -40,7 +49,9 @@ export const upsert = mutation({
       durationEnd: args.durationEnd,
       isOnSite: args.isOnSite,
       campStaffId: args.campStaffId,
+      roomNumber,
     };
+    if (roomNumber) updateData.missingRoomReportedAt = undefined;
 
     if (args.password !== undefined) {
       updateData.password = args.password;
@@ -48,6 +59,7 @@ export const upsert = mutation({
 
     if (existing) {
       await ctx.db.patch(existing._id, updateData);
+      await syncRoomOccupancy(ctx, existing._id, roomNumber);
       return (await ctx.db.get(existing._id))!;
     }
 
@@ -56,6 +68,7 @@ export const upsert = mutation({
       ...updateData,
       points: 0,
     });
+    await syncRoomOccupancy(ctx, _id, roomNumber);
 
     // If it's a new user and we have a password, send credentials
     if (args.password) {
@@ -183,12 +196,25 @@ export const getStats = query({
       return { name, value: count };
     });
 
-    const departments = ["room_service", "housekeeping", "maintenance", "laundry", "kitchen", "shop", "electrical"] as const;
-    const byDepartment = departments.map((dept) => {
-      const count = users.filter((u) => u.department === dept).length;
-      const name = dept.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-      return { name, value: count };
-    });
+    // Staff can cover several departments: count each staff member once per
+    // department they work in (primary department + assigned duties).
+    const staffUsers = users.filter((u) => u.role === "staff" || u.role === "camp-staff");
+    const departments: string[] = ["room_service", "housekeeping", "maintenance", "laundry", "kitchen", "shop", "electrical"];
+    const deptCounts = new Map<string, number>(departments.map((d) => [d, 0]));
+    let unassigned = 0;
+    for (const u of staffUsers) {
+      const covered = new Set(
+        [u.department, u.userSubcategory, ...(u.assignedDuties ?? [])].filter((d): d is string => !!d)
+      );
+      if (covered.size === 0) unassigned++;
+      for (const d of covered) deptCounts.set(d, (deptCounts.get(d) ?? 0) + 1);
+    }
+    const byDepartment: { key?: string; name: string; value: number }[] = [...deptCounts.entries()].map(([dept, count]) => ({
+      key: dept,
+      name: dept.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      value: count,
+    }));
+    if (unassigned > 0) byDepartment.push({ name: "Unassigned", value: unassigned });
 
     const now = Date.now();
     const activeVisitors = users.filter((u) =>
@@ -206,6 +232,7 @@ export const getStats = query({
     return {
       byRole,
       byDepartment,
+      staffTotal: staffUsers.length,
       activeVisitors,
       onLeaveCount,
       onSiteCount,
@@ -249,7 +276,7 @@ export const updateProfile = mutation({
     name: v.string(),
     email: v.string(),
     image: v.optional(v.string()),
-    roomNumber: v.optional(v.string()),
+    // Rooms are assigned by admins only (users.upsert / rooms), not self-service
   },
   handler: async (ctx, args) => {
     const { userId, ...updates } = args;
@@ -264,7 +291,6 @@ export const updateProfile = mutation({
       name: updates.name,
       email: updates.email,
       ...(updates.image !== undefined && { image: updates.image }),
-      ...(updates.roomNumber !== undefined && { roomNumber: updates.roomNumber }),
     });
 
     return await ctx.db.get(userId);
@@ -562,5 +588,80 @@ export const getSubordinates = query({
       .collect();
 
     return subordinates;
+  },
+});
+
+// ── Room assignment ───────────────────────────────────────────────────────
+
+// Residents and staff use the client app, which needs to know their room
+const ROOM_ROLES = ["resident", "camper", "visitor", "staff", "camp-staff"];
+export function roleNeedsRoom(role?: string) {
+  return ROOM_ROLES.includes(role || "");
+}
+
+// Mirror a user's room onto the rooms table so occupancy stays accurate
+async function syncRoomOccupancy(ctx: MutationCtx, userId: Id<"users">, roomNumber?: string) {
+  const rooms = await ctx.db.query("rooms").collect();
+  let changed = false;
+  for (const room of rooms) {
+    if (room.occupantId === userId && room.roomNumber !== roomNumber) {
+      await ctx.db.patch(room._id, { occupantId: undefined, status: "available" });
+      changed = true;
+    } else if (room.roomNumber === roomNumber && !room.occupantId) {
+      await ctx.db.patch(room._id, { occupantId: userId, status: "occupied" });
+      changed = true;
+    }
+  }
+  if (changed) await recordOccupancySnapshot(ctx);
+}
+
+// Live room lookup for the client app (its cached login profile can be stale)
+export const getMyRoom = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+    if (user.roomNumber) return { roomNumber: user.roomNumber };
+    // Fall back to a room that lists them as occupant
+    const rooms = await ctx.db.query("rooms").collect();
+    const occupied = rooms.find((r) => r.occupantId === args.userId);
+    return { roomNumber: occupied?.roomNumber ?? null };
+  },
+});
+
+const MISSING_ROOM_REPORT_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+// Called by the client when a user without a room opens a request form
+export const reportMissingRoom = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.roomNumber) return;
+    if (user.missingRoomReportedAt && Date.now() - user.missingRoomReportedAt < MISSING_ROOM_REPORT_INTERVAL_MS) return;
+
+    await ctx.db.patch(args.userId, { missingRoomReportedAt: Date.now() });
+    await ctx.runMutation(api.notifications.sendRoleNotification, {
+      role: "admin",
+      type: "missing_room",
+      message: `🏠 ${user.name} opened a request form but has no room assigned. Set their room on the Users page.`,
+    });
+  },
+});
+
+// Daily nudge to admins listing residents/staff who still have no room
+export const remindMissingRooms = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const missing = users.filter((u) => roleNeedsRoom(u.role) && !u.roomNumber);
+    if (missing.length === 0) return;
+
+    const names = missing.slice(0, 5).map((u) => u.name).join(", ");
+    const more = missing.length > 5 ? ` and ${missing.length - 5} more` : "";
+    await ctx.runMutation(api.notifications.sendRoleNotification, {
+      role: "admin",
+      type: "missing_room",
+      message: `🏠 ${missing.length} user${missing.length === 1 ? " has" : "s have"} no room assigned: ${names}${more}. Set their rooms on the Users page.`,
+    });
   },
 });

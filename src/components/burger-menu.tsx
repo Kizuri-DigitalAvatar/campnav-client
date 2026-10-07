@@ -10,22 +10,22 @@ import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
 
 export function BurgerMenu() {
-    const [isOpen, setIsOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState(true)
     const pathname = usePathname()
     const { user, loading } = useAuth()
 
     const navItems = user && isWorker(user.role)
         ? [
-            { href: "/campnav", label: "Home", icon: Home },
-            { href: "/campnav/assignments", label: "Tasks", icon: ClipboardList },
-            { href: "/campnav/history", label: "History", icon: History },
-            { href: "/campnav/profile", label: "Profile", icon: User },
+            { href: "/app", label: "Home", icon: Home },
+            { href: "/app/assignments", label: "Tasks", icon: ClipboardList },
+            { href: "/app/history", label: "History", icon: History },
+            { href: "/app/profile", label: "Profile", icon: User },
         ]
         : [
-            { href: "/campnav", label: "Home", icon: Home },
-            { href: "/campnav/services", label: "Services", icon: Grid2X2 },
-            { href: "/campnav/updates", label: "Updates", icon: Bell },
-            { href: "/campnav/profile", label: "Profile", icon: User },
+            { href: "/app", label: "Home", icon: Home },
+            { href: "/app/services", label: "Services", icon: Grid2X2 },
+            { href: "/app/updates", label: "Updates", icon: Bell },
+            { href: "/app/profile", label: "Profile", icon: User },
         ]
 
     return (

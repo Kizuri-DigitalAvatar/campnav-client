@@ -33,7 +33,8 @@ export default defineSchema({
     isOnSite: v.optional(v.boolean()), // For camp-staff
     campStaffId: v.optional(v.string()), // For camp-staff
     points: v.optional(v.number()),
-    roomNumber: v.optional(v.string()), // For campers
+    roomNumber: v.optional(v.string()), // Assigned by admins; residents & staff must have one
+    missingRoomReportedAt: v.optional(v.number()), // Last time admins were told this user has no room
     dietaryRequirements: v.optional(v.array(v.string())),
     roomCategory: v.optional(v.string()), // executive, hq_house, standard
     accessLevel: v.optional(v.number()), // 1-5 access level for different areas
@@ -67,6 +68,8 @@ export default defineSchema({
     confirmationEvidence: v.optional(v.array(v.string())), // storageIds for proof of delivery
     quantity: v.optional(v.number()),
     productImage: v.optional(v.string()),
+    placedBy: v.optional(v.id("users")), // Set when an admin ordered on the resident's behalf
+    note: v.optional(v.string()),
   }).index("by_status", ["status"])
     .index("by_userId", ["userId"])
     .index("by_source", ["source"]),
@@ -131,6 +134,7 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     deliveredAt: v.optional(v.number()),
     readAt: v.optional(v.number()), // when the user saw it in the in-app popup
+    link: v.optional(v.string()), // In-app path to open when the notification is clicked
   }).index("by_userId", ["userId"])
     .index("by_assignmentId", ["assignmentId"])
     .index("by_status", ["status"])
@@ -460,6 +464,10 @@ export default defineSchema({
     })),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
+    lastCompletedBy: v.optional(v.id("users")),
+    lastDueNotifiedAt: v.optional(v.number()), // Throttles the daily due/overdue reminders
+    durationMinutes: v.optional(v.number()), // Work window length; nextDue is the start
+    timeZone: v.optional(v.string()), // Admin's zone, so notification times read as local
   }).index("by_status", ["status"])
     .index("by_type", ["type"])
     .index("by_nextDue", ["nextDue"]),

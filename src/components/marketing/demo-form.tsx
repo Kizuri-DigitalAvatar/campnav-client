@@ -105,7 +105,7 @@ export function DemoForm() {
                         <Link href="/">Back to the site</Link>
                     </Button>
                     <Button asChild className="rounded-full">
-                        <Link href="/campnav/login">
+                        <Link href="/app/login">
                             Log in
                             <ArrowRight className="size-4" />
                         </Link>

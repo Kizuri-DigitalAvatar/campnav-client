@@ -53,12 +53,16 @@ export function SiteHeader() {
             )}
         >
             <div className="mx-auto w-full max-w-6xl px-4">
+                {/*
+                 * The bar carries its glass background at rest as well as on
+                 * scroll, so it reads as a bar in the first frame rather than
+                 * materialising once the page moves. Scrolling only lifts it off
+                 * the page with a shadow.
+                 */}
                 <div
                     className={cn(
-                        "flex h-14 items-center justify-between rounded-2xl px-3 md:px-4 transition-all duration-300",
-                        scrolled
-                            ? "glass-panel shadow-card"
-                            : "border border-transparent"
+                        "glass-panel flex h-14 items-center justify-between rounded-2xl px-3 transition-all duration-300 md:px-4",
+                        scrolled && "shadow-card"
                     )}
                 >
                     <BrandMark />
@@ -80,7 +84,7 @@ export function SiteHeader() {
                             <ModeToggle />
                         </div>
                         <Button variant="ghost" asChild className="hidden sm:inline-flex">
-                            <Link href={signedIn ? "/campnav" : "/campnav/login"}>
+                            <Link href={signedIn ? "/app" : "/app/login"}>
                                 {signedIn ? <LayoutDashboard className="size-4" /> : <LogIn className="size-4" />}
                                 {signedIn ? "Open app" : "Log in"}
                             </Link>
@@ -132,7 +136,7 @@ export function SiteHeader() {
                             <Link href="/contact">Book a demo</Link>
                         </Button>
                         <Button asChild variant="outline" size="lg" className="h-12 w-full rounded-full text-base">
-                            <Link href={signedIn ? "/campnav" : "/campnav/login"}>
+                            <Link href={signedIn ? "/app" : "/app/login"}>
                                 {signedIn ? "Open CampNav" : "Log in to CampNav"}
                             </Link>
                         </Button>

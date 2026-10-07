@@ -1,41 +1,57 @@
 import { internalMutation } from "./_generated/server";
 import { api } from "./_generated/api";
 
+// Staff reminders for a task they haven't accepted, measured from when it was
+// assigned to them (the first notification goes out at assignment itself):
+// 10 min, 30 min, then hourly up to 4 h, then twice a day until accepted.
+const REMINDER_SCHEDULE_MINUTES = [10, 30, 60, 120, 180, 240];
+const LATE_REMINDER_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const MAX_REMINDERS_PER_STAFF_PER_DAY = 10;
+
+function nextReminderDueAt(task: { assignedAt: number; reminderCount?: number; lastReminderSent?: number }) {
+    const count = task.reminderCount || 0;
+    if (count < REMINDER_SCHEDULE_MINUTES.length) {
+        return task.assignedAt + REMINDER_SCHEDULE_MINUTES[count] * 60 * 1000;
+    }
+    return (task.lastReminderSent ?? task.assignedAt) + LATE_REMINDER_INTERVAL_MS;
+}
+
+// After sending, skip any scheduled steps that are already in the past (e.g. the
+// cron was down) so one late run doesn't fire a burst of catch-up reminders
+function nextReminderCount(assignedAt: number, now: number) {
+    const elapsedMin = (now - assignedAt) / 60000;
+    const passed = REMINDER_SCHEDULE_MINUTES.filter((m) => m <= elapsedMin).length;
+    return passed;
+}
+
+function describeWait(ms: number) {
+    const min = Math.round(ms / 60000);
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    return h < 24 ? `${h} hour${h === 1 ? "" : "s"}` : `${Math.floor(h / 24)} day${h < 48 ? "" : "s"}`;
+}
+
 // Internal function called by cron job to check for worker reminders
 export const checkUnacknowledgedAssignments = internalMutation({
     args: {},
     handler: async (ctx) => {
-        const twoHoursAgo = Date.now() - 120 * 60 * 1000;
+        const now = Date.now();
 
-        // Get all pending assignments
         const assignments = await ctx.db
             .query("tasks")
             .withIndex("by_status", (q) => q.eq("status", "pending"))
             .collect();
 
-        // Filter for those that haven't been acknowledged and haven't had a reminder recently
-        const needReminder = assignments.filter((a) => {
-            if (!a.staffId || a.acknowledgedAt) return false;
+        const due = assignments.filter((a) =>
+            a.staffId && !a.acknowledgedAt && nextReminderDueAt(a) <= now
+        );
 
-            // Initial reminder after 10 minutes
-            const initialThreshold = Date.now() - 10 * 60 * 1000;
-            if (a.assignedAt > initialThreshold) return false;
-
-            // Subsequent reminders every 2 hours
-            if (a.lastReminderSent && a.lastReminderSent > twoHoursAgo) return false;
-
-            return true;
-        });
-
-        for (const assignment of needReminder) {
-            if (!assignment.staffId) continue;
-
-            const worker = await ctx.db.get(assignment.staffId);
+        for (const assignment of due) {
+            const worker = await ctx.db.get(assignment.staffId!);
             if (!worker) continue;
 
             const reminderCount = assignment.reminderCount || 0;
 
-            // Limit to 10 email reminders per staff member per day
             const startOfDay = new Date().setHours(0, 0, 0, 0);
             const dailyReminders = await ctx.db
                 .query("notifications")
@@ -43,29 +59,37 @@ export const checkUnacknowledgedAssignments = internalMutation({
                 .filter((q) =>
                     q.and(
                         q.eq(q.field("type"), "reminder"),
+                        q.eq(q.field("channel"), "push"),
                         q.gte(q.field("_creationTime"), startOfDay)
                     )
                 )
                 .collect();
 
-            if (dailyReminders.length >= 10) {
+            if (dailyReminders.length >= MAX_REMINDERS_PER_STAFF_PER_DAY) {
                 console.log(`[checkUnacknowledgedAssignments] Skipping reminder for user ${worker.email}: daily limit reached (${dailyReminders.length})`);
                 continue;
             }
 
-            // Send reminder to worker
+            const waited = describeWait(now - assignment.assignedAt);
             await ctx.runMutation(api.notifications.sendReminderNotification, {
-                userId: assignment.staffId,
+                userId: assignment.staffId!,
                 assignmentId: assignment._id,
-                message: `Reminder: You have a pending ${assignment.serviceType} assignment for ${assignment.roomNumber}. Please acknowledge.`,
+                message: `Reminder: Your ${assignment.serviceType.replace("_", " ")} task for Room ${assignment.roomNumber} has been waiting ${waited}. Please accept it.`,
             });
 
-            // If this is the 3rd reminder or more, notify admin
-            if (reminderCount >= 2) {
+            // sendReminderNotification bumps reminderCount by one; jump past any missed steps
+            const caughtUp = nextReminderCount(assignment.assignedAt, now);
+            if (caughtUp > reminderCount + 1) {
+                await ctx.db.patch(assignment._id, { reminderCount: caughtUp });
+            }
+
+            // Tell admins once, when the third reminder (1 hour) goes unanswered
+            if (reminderCount === 2) {
                 await ctx.runMutation(api.notifications.notifyAdminUnresponsive, {
                     assignmentId: assignment._id,
+                    requestId: assignment.requestId,
                     workerName: worker.name,
-                    message: `Worker ${worker.name} has not responded to assignment for ${assignment.roomNumber} after ${reminderCount + 1} reminders.`,
+                    message: `${worker.name} has not accepted the ${assignment.serviceType.replace("_", " ")} task for Room ${assignment.roomNumber} after ${waited} and 3 reminders.`,
                 });
             }
         }
