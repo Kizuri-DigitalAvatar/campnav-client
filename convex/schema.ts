@@ -69,6 +69,12 @@ export default defineSchema({
     quantity: v.optional(v.number()),
     productImage: v.optional(v.string()),
     placedBy: v.optional(v.id("users")), // Set when an admin ordered on the resident's behalf
+    items: v.optional(v.array(v.object({
+      productId: v.optional(v.id("products")),
+      name: v.string(),
+      quantity: v.number(),
+      price: v.optional(v.number()),
+    }))),
     note: v.optional(v.string()),
   }).index("by_status", ["status"])
     .index("by_userId", ["userId"])

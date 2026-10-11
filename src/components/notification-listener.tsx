@@ -5,6 +5,7 @@ import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../convex/_generated/api"
 import { useAuth } from "@/components/auth-provider"
+import { isWorker } from "@/components/role-guard"
 import { toast } from "sonner"
 import { Bell } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -62,7 +63,7 @@ export function NotificationListener() {
                                 router.push(notification.link)
                             } else if (notification.type === "preventive") {
                                 router.push("/app/preventive")
-                            } else if (notification.assignmentId) {
+                            } else if (notification.assignmentId && isWorker(user?.role)) {
                                 router.push(`/app/assignments/${notification.assignmentId}`)
                             } else if (notification.requestId) {
                                 router.push(`/app/requests/${notification.requestId}`)

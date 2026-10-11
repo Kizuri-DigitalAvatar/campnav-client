@@ -115,7 +115,7 @@ export const create = mutation({
             message: `New ${displayType} Request: ${args.roomNumber} - ${args.category ? `[${args.category}${args.subCategory ? ` / ${args.subCategory}` : ""}] ` : ""}${args.description}`,
         });
 
-        // No vacant staff — alert admins so they can assign someone manually
+        // Admins hear about every request; when nobody is free it's flagged as needing action
         if (noVacantStaff) {
             await ctx.runMutation(api.notifications.sendRoleNotification, {
                 role: "admin",
@@ -123,6 +123,16 @@ export const create = mutation({
                 requestId,
                 type: "admin_alert",
                 message: `⚠️ No vacant staff for ${displayType} request (Room ${args.roomNumber}): "${args.description}". Please assign a staff member manually.`,
+            });
+        } else {
+            const requester = user?.name ?? "A resident";
+            const offeredTo: string | undefined = assignedStaffId ? ((await ctx.db.get(assignedStaffId)) as { name?: string } | null)?.name : undefined;
+            await ctx.runMutation(api.notifications.sendRoleNotification, {
+                role: "admin",
+                assignmentId,
+                requestId,
+                type: "new_request",
+                message: `🔔 New ${displayType} request from ${requester} (Room ${args.roomNumber})${args.priority === "urgent" ? " — URGENT" : ""}: "${args.description}".${offeredTo ? ` Offered to ${offeredTo}.` : ""}`,
             });
         }
 

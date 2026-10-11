@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, Home, Grid2X2, Bell, User, ClipboardList, History } from "lucide-react"
+import { Menu, X, Home, Grid2X2, Bell, User, ClipboardList, History, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
@@ -24,6 +24,7 @@ export function BurgerMenu() {
         : [
             { href: "/app", label: "Home", icon: Home },
             { href: "/app/services", label: "Services", icon: Grid2X2 },
+            { href: "/app/history", label: "My Orders", icon: ShoppingBag },
             { href: "/app/updates", label: "Updates", icon: Bell },
             { href: "/app/profile", label: "Profile", icon: User },
         ]

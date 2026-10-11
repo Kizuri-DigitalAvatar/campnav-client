@@ -13,6 +13,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 
+const ORDER_TABS = [
+    { key: "all", label: "All" },
+    { key: "shop", label: "Shop" },
+    { key: "room_service", label: "Room Service" },
+] as const
+
 export default function HistoryPage() {
     const { user, loading } = useAuth()
     const orders = useQuery(api.orders.listForUser, user && !isWorker(user.role) ? { userId: user._id } : "skip")
@@ -26,6 +32,7 @@ export default function HistoryPage() {
     const [note, setNote] = useState("")
     const [files, setFiles] = useState<File[]>([])
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [orderTab, setOrderTab] = useState<(typeof ORDER_TABS)[number]["key"]>("all")
 
     const isLoading = loading || (user && (isWorker(user.role) ? assignments === undefined : orders === undefined))
 
@@ -49,6 +56,8 @@ export default function HistoryPage() {
     }
 
     if (!user) return null
+
+    const visibleOrders = (orders ?? []).filter((o: any) => orderTab === "all" || o.source === orderTab)
 
     if (isWorker(user.role)) {
         const completedAssignments = (assignments || []).filter(a => a.status === "completed" || a.status === "rated")
@@ -97,12 +106,29 @@ export default function HistoryPage() {
         <div className="space-y-6 pb-20">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold">Order History</h1>
-                    <p className="text-xs text-muted-foreground mt-1 tracking-tight">Track your previous purchases and requests</p>
+                    <h1 className="text-2xl font-bold">My Orders</h1>
+                    <p className="text-xs text-muted-foreground mt-1 tracking-tight">Your shop and room service orders</p>
                 </div>
                 <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">
                     {orders?.length || 0} Orders
                 </div>
+            </div>
+
+            <div className="flex gap-2">
+                {ORDER_TABS.map((tab) => {
+                    const count = tab.key === "all" ? (orders?.length ?? 0) : (orders ?? []).filter((o: any) => o.source === tab.key).length
+                    const active = orderTab === tab.key
+                    return (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => setOrderTab(tab.key)}
+                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}
+                        >
+                            {tab.label} <span className="opacity-60">{count}</span>
+                        </button>
+                    )
+                })}
             </div>
 
             <div className="space-y-4">
@@ -112,13 +138,15 @@ export default function HistoryPage() {
                             <div key={i} className="h-24 bg-muted rounded-2xl" />
                         ))}
                     </div>
-                ) : orders.length === 0 ? (
+                ) : visibleOrders.length === 0 ? (
                     <div className="text-center py-12 bg-muted/30 rounded-3xl border-2 border-dashed border-border/50">
                         <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
-                        <p className="text-muted-foreground">No orders yet</p>
+                        <p className="text-muted-foreground">
+                            {orderTab === "all" ? "No orders yet" : `No ${orderTab === "shop" ? "shop" : "room service"} orders yet`}
+                        </p>
                     </div>
                 ) : (
-                    orders.map((order: any) => (
+                    visibleOrders.map((order: any) => (
                         <Card key={order._id} className="p-4 rounded-2xl hover:shadow-md transition-shadow space-y-3">
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -149,9 +177,10 @@ export default function HistoryPage() {
                                                 {order.status.replace('_', ' ')}
                                             </Badge>
                                         </div>
-                                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
-                                            <Clock size={10} />
-                                            {new Date(order.createdAt).toLocaleString()}
+                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
+                                            <span className="inline-flex items-center gap-1"><Clock size={10} />{new Date(order.createdAt).toLocaleString()}</span>
+                                            {order.roomNumber && <span>· Room {order.roomNumber}</span>}
+                                            {order.placedBy && <span className="font-semibold text-primary">· Ordered for you by the camp team</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -166,21 +195,41 @@ export default function HistoryPage() {
                             </div>
 
                             <div className="bg-muted/50 rounded-xl p-3 text-xs text-muted-foreground">
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="truncate flex-1">
-                                        {order.quantity ? `${order.quantity}x ${order.summary}` : order.summary}
-                                    </span>
-                                    <ChevronRight size={14} className="text-muted-foreground/60" />
-                                </div>
+                                {order.items?.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {order.items.map((item: any, i: number) => (
+                                            <li key={i} className="flex items-center gap-3">
+                                                <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden border bg-background flex items-center justify-center">
+                                                    {item.imageUrl
+                                                        ? <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                                                        : <ShoppingBag size={14} className="text-muted-foreground/50" />}
+                                                </div>
+                                                <span className="flex-1 min-w-0 truncate font-medium text-foreground">{item.name}</span>
+                                                <span className="shrink-0 font-semibold">×{item.quantity}</span>
+                                                {item.price !== undefined && (
+                                                    <span className="shrink-0 w-16 text-right">Le {(item.price * item.quantity).toFixed(2)}</span>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="truncate flex-1">
+                                            {order.quantity ? `${order.quantity}x ${order.summary}` : order.summary}
+                                        </span>
+                                        <ChevronRight size={14} className="text-muted-foreground/60" />
+                                    </div>
+                                )}
+                                {order.note && <p className="text-[11px] mt-2">Note: {order.note}</p>}
                                 {order.confirmationNote && (
                                     <p className="text-[11px] text-foreground mt-2 font-medium">Note: {order.confirmationNote}</p>
                                 )}
-                                {order.confirmationEvidence?.length > 0 && (
+                                {order.evidenceUrls?.length > 0 && (
                                     <div className="mt-3 flex flex-wrap gap-2">
-                                        {order.confirmationEvidence.map((id: string) => (
-                                            <div key={id} className="w-16 h-16 rounded-lg overflow-hidden border bg-background">
+                                        {order.evidenceUrls.map((url: string) => (
+                                            <div key={url} className="w-16 h-16 rounded-lg overflow-hidden border bg-background">
                                                 <img
-                                                    src={`https://api.convex.dev/api/storage/${id}`}
+                                                    src={url}
                                                     alt="delivery evidence"
                                                     className="w-full h-full object-cover"
                                                 />

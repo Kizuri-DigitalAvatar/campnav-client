@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell, Grid2X2, Home, User, ClipboardList, History, Inbox } from "lucide-react"
+import { Bell, Grid2X2, Home, User, ClipboardList, History, Inbox, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
@@ -22,6 +22,7 @@ export function BottomNav() {
         : [
             { href: "/app", label: "Home", icon: Home },
             { href: "/app/services", label: "Services", icon: Grid2X2 },
+            { href: "/app/history", label: "Orders", icon: ShoppingBag },
             { href: "/app/updates", label: "Updates", icon: Bell },
             { href: "/app/profile", label: "Profile", icon: User },
         ]

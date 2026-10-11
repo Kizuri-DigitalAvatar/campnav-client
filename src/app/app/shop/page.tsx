@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-provider"
 import { RoomField, useMyRoom } from "@/components/my-room"
+import { ProductViewToggle, useProductView } from "@/components/product-view-toggle"
 import { api } from "../../../../convex/_generated/api"
 
 const CATEGORY_FILTERS = ["all", "Food", "Drink", "Snacks", "Gear", "Apparel", "Items", "Service"] as const
@@ -28,6 +29,8 @@ export default function ShopPage() {
   const [query, setQuery] = useState("")
   // Deliveries go to the room admins assigned to this user
   const { roomNumber } = useMyRoom()
+  const [view, setView] = useProductView("campnav:shop-view")
+  const isGrid = view === "grid"
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showRoomNumberModal, setShowRoomNumberModal] = useState(false)
@@ -72,6 +75,7 @@ export default function ShopPage() {
       roomNumber: room.trim() || undefined,
       summary: product.name,
       total: product.price,
+      items: [{ productId: product._id, name: product.name, quantity: 1, price: product.price }],
     })
     alert("Order placed successfully!")
   }
@@ -96,6 +100,10 @@ export default function ShopPage() {
           </Link>
           <span>/</span>
           <span>Shop</span>
+          <Link href="/app/history" className="ml-auto inline-flex items-center gap-1 font-semibold text-primary">
+            <ShoppingBag className="h-3 w-3" />
+            <span>My orders</span>
+          </Link>
         </div>
         <h1 className="text-xl font-semibold text-primary font-black uppercase tracking-tighter italic">Camp Shop</h1>
         <p className="text-xs text-muted-foreground">Order essentials and gear for your stay.</p>
@@ -114,6 +122,7 @@ export default function ShopPage() {
               className="h-8 border-0 bg-transparent px-0 text-xs shadow-none focus-visible:ring-0 font-bold uppercase tracking-tight"
             />
           </div>
+          <ProductViewToggle view={view} onChange={setView} />
         </div>
       </div>
 
@@ -140,14 +149,14 @@ export default function ShopPage() {
       </div>
 
       {/* Product grid */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${isGrid ? "grid-cols-2" : "grid-cols-1"}`}>
         {visibleProducts.map((product) => (
           <Card
             key={product._id}
-            className="flex flex-col h-full rounded-[2.5rem] overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 group cursor-pointer"
+            className={`flex overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 group cursor-pointer ${isGrid ? "flex-col h-full rounded-[2.5rem]" : "flex-row items-center gap-4 p-3 rounded-[2rem]"}`}
             onClick={() => setSelectedProduct(product)}
           >
-            <div className="flex h-32 w-full items-center justify-center bg-muted relative">
+            <div className={`flex items-center justify-center bg-muted relative overflow-hidden ${isGrid ? "h-32 w-full" : "h-24 w-24 shrink-0 rounded-2xl border"}`}>
               {product.imageUrl ? (
                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
               ) : (
@@ -161,7 +170,7 @@ export default function ShopPage() {
                 </div>
               )}
             </div>
-            <div className="space-y-2 border-t px-3 py-2 flex flex-col flex-1">
+            <div className={`space-y-2 flex flex-col flex-1 min-w-0 ${isGrid ? "border-t px-3 py-2" : ""}`}>
               <h2 className="text-xs font-semibold leading-snug">
                 {product.name}
               </h2>

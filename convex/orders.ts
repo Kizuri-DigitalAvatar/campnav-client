@@ -1,5 +1,23 @@
 import { query, mutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { api, internal } from "./_generated/api";
+
+// Alert admins the moment a resident orders (live toast in the admin app,
+// plus email/SMS per each admin's preferences)
+async function notifyAdminsOfOrder(ctx: MutationCtx, order: Doc<"orders">, heading: string) {
+  const customer = await ctx.db.get(order.userId);
+  const kind = order.source === "room_service" ? "room service" : order.source === "shop" ? "shop" : order.source.replace("_", " ");
+  const where = order.roomNumber ? ` (Room ${order.roomNumber})` : "";
+  await ctx.runMutation(api.notifications.sendRoleNotification, {
+    role: "admin",
+    type: "new_order",
+    message: `🛒 ${heading} ${kind} order from ${customer?.name ?? "a resident"}${where}: ${order.summary} — Le ${order.total.toFixed(2)}`,
+    link: "/orders",
+  });
+  await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});
+}
 
 export const list = query({
   args: {
@@ -78,10 +96,17 @@ export const create = mutation({
     roomNumber: v.optional(v.string()),
     quantity: v.optional(v.number()),
     productImage: v.optional(v.string()),
+    items: v.optional(v.array(v.object({
+      productId: v.optional(v.id("products")),
+      name: v.string(),
+      quantity: v.number(),
+      price: v.optional(v.number()),
+    }))),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     const _id = await ctx.db.insert("orders", {
+      items: args.items,
       userId: args.userId,
       source: args.source,
       summary: args.summary,
@@ -92,7 +117,9 @@ export const create = mutation({
       productImage: args.productImage,
       createdAt: now,
     });
-    return await ctx.db.get(_id);
+    const order = (await ctx.db.get(_id))!;
+    await notifyAdminsOfOrder(ctx, order, "New");
+    return order;
   },
 });
 
@@ -151,7 +178,9 @@ export const incrementShopOrder = mutation({
     const newQty = currentQty + args.amount;
     const newTotal = order.total + args.unitPrice * args.amount;
     await ctx.db.patch(args.orderId, { quantity: newQty, total: newTotal });
-    return await ctx.db.get(args.orderId);
+    const updated = (await ctx.db.get(args.orderId))!;
+    await notifyAdminsOfOrder(ctx, { ...updated, summary: `${updated.summary} (now x${newQty})` }, "Added to");
+    return updated;
   },
 });
 
@@ -171,29 +200,37 @@ export const listForUser = query({
       .order("desc")
       .collect();
 
+    const products = await ctx.db.query("products").collect();
+    const byId = new Map(products.map((p) => [p._id as string, p]));
+    const byName = new Map(products.map((p) => [p.name.trim().toLowerCase(), p]));
+    const imageCache = new Map<string, string | null>();
+    const resolveImage = async (image?: string) => {
+      if (!image) return null;
+      if (image.startsWith("http")) return image;
+      if (!imageCache.has(image)) {
+        try { imageCache.set(image, await ctx.storage.getUrl(image)); } catch { imageCache.set(image, null); }
+      }
+      return imageCache.get(image) ?? null;
+    };
+
     return Promise.all(orders.map(async (o: any) => {
-      let productImage = o.productImage;
-      if (productImage && !productImage.startsWith("http")) {
-        try {
-          productImage = await ctx.storage.getUrl(productImage);
-        } catch (e) {
-          console.error("Failed to resolve product image", productImage, e);
-        }
-      }
-      if (!productImage && o.source === "shop") {
-        const productList = await ctx.db.query("products").collect();
-        const product = productList.find(p => p.name === o.summary);
-        if (product?.image) {
-          try {
-            productImage = product.image.startsWith("http")
-              ? product.image
-              : await ctx.storage.getUrl(product.image);
-          } catch (e) {
-            console.error("Failed to resolve fallback product image", product.image, e);
-          }
-        }
-      }
-      return { ...o, productImage };
+      // Items: stored on newer orders; older ones are read back out of the summary
+      const rawItems: { productId?: string; name: string; quantity: number; price?: number }[] =
+        o.items ?? itemsFromSummary(o.summary, o.source, o.quantity);
+      const items = await Promise.all(rawItems.map(async (item) => {
+        const product = (item.productId && byId.get(item.productId)) || byName.get(item.name.trim().toLowerCase());
+        return { ...item, imageUrl: await resolveImage(product?.image) };
+      }));
+      // A shop order's quantity is bumped in place when re-ordered
+      if (o.source === "shop" && items.length === 1 && o.quantity) items[0].quantity = o.quantity;
+
+      const productImage = (await resolveImage(o.productImage)) ?? items.find((i) => i.imageUrl)?.imageUrl ?? null;
+      const evidenceUrls = (await Promise.all(
+        (o.confirmationEvidence || []).map(async (id: string) => {
+          try { return await ctx.storage.getUrl(id); } catch { return null; }
+        })
+      )).filter(Boolean);
+      return { ...o, productImage, evidenceUrls, items };
     }));
   },
 });
@@ -243,6 +280,12 @@ export const createForResident = mutation({
       createdAt: Date.now(),
       placedBy: args.placedBy,
       note,
+      items: lines.map((l) => ({
+        productId: l.product!._id,
+        name: l.product!.name,
+        quantity: l.quantity,
+        price: l.product!.price,
+      })),
     });
 
     // Tell the resident something is on its way
@@ -259,3 +302,16 @@ export const createForResident = mutation({
     return orderId;
   },
 });
+
+// Older orders only have a text summary like "Touch Light x1, Cookies x2"
+// (optionally followed by " - note"). Recover the item list from it.
+function itemsFromSummary(summary: string, source: string, quantity?: number) {
+  const body = summary.split(" - ")[0];
+  const parts = body.split(", ").map((part) => part.trim().match(/^(.+?) x(\d+)$/));
+  if (parts.length > 0 && parts.every(Boolean)) {
+    return parts.map((m) => ({ name: m![1], quantity: Number(m![2]) }));
+  }
+  // Shop orders are a single product named by the summary
+  if (source === "shop") return [{ name: summary, quantity: quantity ?? 1 }];
+  return [];
+}

@@ -51,13 +51,21 @@ export default function AssignmentDetailPage() {
 
     const isLoading = task === undefined
 
-    useEffect(() => {
-        if (!isLoading && task && task.status === "pending" && user?._id) {
-            recordView({ id: task._id, staffId: user._id })
-        }
-    }, [isLoading, task, user?._id, recordView])
+    const isStaff = !!user && isWorker(user.role)
 
-    if (task === undefined) {
+    // This is a staff screen; residents/guests see the same job as their request
+    useEffect(() => {
+        if (!user || isStaff || task === undefined) return
+        router.replace(task?.requestId ? `/app/requests/${task.requestId}` : "/app/requests")
+    }, [user, isStaff, task, router])
+
+    useEffect(() => {
+        if (!isLoading && task && task.status === "pending" && isStaff) {
+            recordView({ id: task._id, staffId: user!._id })
+        }
+    }, [isLoading, task, isStaff, user, recordView])
+
+    if (task === undefined || (user && !isStaff)) {
         return (
             <div className="space-y-6 pb-8">
                 <div className="flex items-center gap-3">
@@ -291,7 +299,7 @@ export default function AssignmentDetailPage() {
                         </>
                     )}
                     {/* TASK COMPLETED STATE */}
-                    {(task.status === "completed" || task.status === "rated") && (
+                    {isStaff && (task.status === "completed" || task.status === "rated") && (
                         <button
                             onClick={() => router.push("/app/assignments")}
                             className="flex-1 bg-muted text-muted-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-muted/80 transition-all"

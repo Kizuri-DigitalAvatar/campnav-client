@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useState } from "react"
 import { usePathname } from "next/navigation"
-import { Bell, Grid2X2, Home, User, LayoutDashboard, ClipboardList, History, Inbox } from "lucide-react"
+import { Bell, Grid2X2, Home, User, LayoutDashboard, ClipboardList, History, Inbox, ShoppingBag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ModeToggle } from "@/components/mode-toggle"
 import { useAuth } from "@/components/auth-provider"
@@ -26,6 +26,7 @@ export function DesktopNav() {
         : [
             { name: 'Home', href: '/app', icon: Home },
             { name: 'Services', href: '/app/services', icon: Grid2X2 },
+            { name: 'My Orders', href: '/app/history', icon: ShoppingBag },
             { name: 'Updates', href: '/app/updates', icon: Bell },
             { name: 'Profile', href: '/app/profile', icon: User },
         ]

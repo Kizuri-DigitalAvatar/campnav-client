@@ -60,6 +60,9 @@ export const upsert = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, updateData);
       await syncRoomOccupancy(ctx, existing._id, roomNumber);
+      if (roomNumber && roomNumber !== existing.roomNumber) {
+        await notifyRoomAssigned(ctx, existing._id, roomNumber, existing.roomNumber);
+      }
       return (await ctx.db.get(existing._id))!;
     }
 
@@ -69,6 +72,7 @@ export const upsert = mutation({
       points: 0,
     });
     await syncRoomOccupancy(ctx, _id, roomNumber);
+    if (roomNumber) await notifyRoomAssigned(ctx, _id, roomNumber);
 
     // If it's a new user and we have a password, send credentials
     if (args.password) {
@@ -597,6 +601,21 @@ export const getSubordinates = query({
 const ROOM_ROLES = ["resident", "camper", "visitor", "staff", "camp-staff"];
 export function roleNeedsRoom(role?: string) {
   return ROOM_ROLES.includes(role || "");
+}
+
+// Tell a user which room they've been given (app, email and SMS per their preferences)
+async function notifyRoomAssigned(ctx: MutationCtx, userId: Id<"users">, roomNumber: string, previousRoom?: string) {
+  const user = await ctx.db.get(userId);
+  if (!user) return;
+  const message = previousRoom
+    ? `🏠 Your room has changed from Room ${previousRoom} to Room ${roomNumber}.`
+    : `🏠 You have been assigned to Room ${roomNumber}. Your requests and orders will go there automatically.`;
+  const prefs = user.notificationPreferences || { push: true, email: true, sms: true };
+  const base = { userId, type: "room_assignment", status: "pending", message, link: "/app/settings" };
+  if (prefs.push) await ctx.db.insert("notifications", { ...base, channel: "push" });
+  if (prefs.email && user.email) await ctx.db.insert("notifications", { ...base, channel: "email" });
+  if (prefs.sms && user.phoneNumber) await ctx.db.insert("notifications", { ...base, channel: "sms" });
+  await ctx.scheduler.runAfter(0, internal.email.processEmailNotifications, {});
 }
 
 // Mirror a user's room onto the rooms table so occupancy stays accurate

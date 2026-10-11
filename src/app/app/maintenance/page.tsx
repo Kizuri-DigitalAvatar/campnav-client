@@ -5,10 +5,13 @@ import { useQuery } from "convex-helpers/react/cache"
 import { useAuth } from "@/components/auth-provider"
 import { api } from "../../../../convex/_generated/api"
 import { Card } from "@/components/ui/card"
+import { ChevronRight } from "lucide-react"
 
 export default function MaintenancePage() {
   const { user } = useAuth()
-  const requests = useQuery(api.requests.listForUser, user ? { userId: user._id } : "skip") ?? []
+  const allRequests = useQuery(api.requests.listForUser, user ? { userId: user._id } : "skip")
+  // Other request types (laundry, housekeeping...) live under My Requests
+  const requests = (allRequests ?? []).filter((r: any) => r.type?.toLowerCase() === "maintenance")
 
   return (
     <div className="space-y-6 pb-4">
@@ -31,9 +34,9 @@ export default function MaintenancePage() {
 
       <div className="space-y-4">
         {requests.map((req: any) => (
+          <Link key={req._id} href={`/app/requests/${req._id}`} className="block">
           <Card
-            key={req._id}
-            className="flex gap-3 overflow-hidden rounded-2xl border bg-card/90 p-3 shadow-sm"
+            className="flex gap-3 overflow-hidden rounded-2xl border bg-card/90 p-3 shadow-sm transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.99]"
           >
             <div className="h-20 w-24 rounded-xl bg-muted overflow-hidden shrink-0">
               {req.imageUrl ? (
@@ -49,7 +52,7 @@ export default function MaintenancePage() {
                   req.status === 'in_progress' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                     'bg-blue-500/10 text-blue-600 border-blue-500/20'
                 }`}>
-                {req.status}
+                {req.status.replace("_", " ")}
               </div>
               <p className="text-[11px] leading-snug text-foreground line-clamp-2">
                 {req.description}
@@ -59,9 +62,11 @@ export default function MaintenancePage() {
                 <span className="font-mono text-[9px]">{req._id.substring(0, 8)}</span>
               </div>
             </div>
+            <ChevronRight className="h-4 w-4 shrink-0 self-center text-muted-foreground" />
           </Card>
+          </Link>
         ))}
-        {requests.length === 0 && (
+        {allRequests !== undefined && requests.length === 0 && (
           <div className="p-12 text-center text-muted-foreground italic text-xs">
             No maintenance requests found.
           </div>

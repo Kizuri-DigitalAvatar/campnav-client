@@ -351,11 +351,15 @@ export const getWorkerAssignments = query({
             .withIndex("by_staffId", (q) => q.eq("staffId", args.workerId))
             .collect();
 
-        // Also get unassigned tasks that are pending
-        const unassignedTasks = await ctx.db
-            .query("tasks")
-            .withIndex("by_status", (q) => q.eq("status", "pending"))
-            .collect();
+        // Unassigned pending tasks are up for grabs, but only for staff
+        const worker = await ctx.db.get(args.workerId);
+        const isStaff = ["staff", "camp-staff"].includes(worker?.role || "");
+        const unassignedTasks = isStaff
+            ? await ctx.db
+                .query("tasks")
+                .withIndex("by_status", (q) => q.eq("status", "pending"))
+                .collect()
+            : [];
 
         const filteredUnassigned = unassignedTasks.filter(t => !t.staffId);
 
@@ -495,6 +499,12 @@ export const acknowledgeAssignment = mutation({
     handler: async (ctx, args) => {
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Task not found");
+        if (args.staffId) {
+            const accepter = await ctx.db.get(args.staffId);
+            if (!["staff", "camp-staff"].includes(accepter?.role || "")) {
+                throw new Error("Only staff members can accept tasks");
+            }
+        }
         if (args.staffId && existing.staffId && existing.staffId !== args.staffId) {
             // A task is only "taken" once someone accepts it. Auto-assignment
             // at creation is a suggestion, so pending tasks stay claimable.

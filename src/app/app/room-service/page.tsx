@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, ShoppingCart, Info, FileText, ChevronRight, Loader2, Home, ExternalLink, Trash2 } from "lucide-react"
+import { ArrowLeft, ShoppingCart, ShoppingBag, Info, FileText, ChevronRight, Loader2, Home, ExternalLink, Trash2 } from "lucide-react"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../../convex/_generated/api"
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
 import { RoomField, useMyRoom } from "@/components/my-room"
+import { ProductViewToggle, useProductView } from "@/components/product-view-toggle"
 import { isAdmin } from "@/components/role-guard"
 import { Id } from "../../../../convex/_generated/dataModel"
 
@@ -22,6 +23,8 @@ export default function RoomServicePage() {
   const [activeTab, setActiveTab] = useState<"menu" | "order">("menu")
   // Deliveries go to the room admins assigned to this user
   const { roomNumber } = useMyRoom()
+  const [view, setView] = useProductView("campnav:room-service-view")
+  const isGrid = view === "grid"
   const [showRoomNumberModal, setShowRoomNumberModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -77,6 +80,10 @@ export default function RoomServicePage() {
         source: "room_service",
         roomNumber: deliverTo,
         summary: summary,
+        items: cart.flatMap((item) => {
+          const product = products?.find((p) => p._id === item.id)
+          return product ? [{ productId: product._id, name: product.name, quantity: item.count, price: product.price }] : []
+        }),
         total: cart.reduce((sum, item) => {
           const p = products?.find((p) => p._id === item.id)
           return sum + (p?.price || 0) * item.count
@@ -103,6 +110,10 @@ export default function RoomServicePage() {
           </Link>
           <span>/</span>
           <span>Room Service</span>
+          <Link href="/app/history" className="ml-auto inline-flex items-center gap-1 font-semibold text-primary">
+            <ShoppingBag className="h-3 w-3" />
+            <span>My orders</span>
+          </Link>
         </div>
         <h1 className="text-xl font-semibold text-primary font-black uppercase tracking-tighter italic">Room Service</h1>
         <p className="text-xs text-muted-foreground">Premium dining delivered to your room.</p>
@@ -266,24 +277,27 @@ export default function RoomServicePage() {
         </div>
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500">
-          <p className="text-xs text-muted-foreground mb-4 leading-relaxed font-medium">
-            Review your selection and checkout. We'll deliver to your room shortly.
-          </p>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+              Review your selection and checkout. We'll deliver to your room shortly.
+            </p>
+            <ProductViewToggle view={view} onChange={setView} />
+          </div>
 
           {!products ? (
-            <div className="grid grid-cols-1 gap-4">
-              {[1, 2, 3].map(i => <div key={i} className="h-32 bg-muted/50 rounded-3xl animate-pulse" />)}
+            <div className={`grid gap-4 ${isGrid ? "grid-cols-2" : "grid-cols-1"}`}>
+              {[1, 2, 3, 4].map(i => <div key={i} className={`${isGrid ? "h-56" : "h-32"} bg-muted/50 rounded-3xl animate-pulse`} />)}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
+            <div className={`grid gap-4 ${isGrid ? "grid-cols-2" : "grid-cols-1"}`}>
               {products.filter(p => p.isAvailable).map((item) => (
                 <Card 
                   key={item._id} 
                   className="overflow-hidden rounded-[2rem] border-2 hover:border-primary/30 transition-all duration-300 group cursor-pointer"
                   onClick={() => setSelectedProduct(item)}
                 >
-                  <div className="flex items-center p-3 gap-4">
-                    <div className="h-24 w-24 rounded-2xl bg-muted overflow-hidden flex-shrink-0 border">
+                  <div className={isGrid ? "flex flex-col h-full" : "flex items-center p-3 gap-4"}>
+                    <div className={isGrid ? "aspect-square w-full bg-muted overflow-hidden border-b" : "h-24 w-24 rounded-2xl bg-muted overflow-hidden flex-shrink-0 border"}>
                       {item.imageUrl ? (
                         <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
                       ) : (
@@ -292,10 +306,10 @@ export default function RoomServicePage() {
                         </div>
                       )}
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <h3 className="text-sm font-black uppercase tracking-tight italic">{item.name}</h3>
+                    <div className={isGrid ? "flex flex-1 flex-col space-y-1 p-3" : "flex-1 space-y-1"}>
+                      <h3 className="text-sm font-black uppercase tracking-tight italic line-clamp-2">{item.name}</h3>
                       <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed font-medium">{item.description}</p>
-                      <div className="flex items-center justify-between mt-2">
+                      <div className={isGrid ? "mt-auto flex flex-col gap-2 pt-2" : "flex items-center justify-between mt-2"}>
                         <span className="text-sm font-black text-primary italic">Le {(item.price ?? 0).toFixed(2)}</span>
 
                         <button
@@ -309,7 +323,7 @@ export default function RoomServicePage() {
                               return [...prev, { id: item._id, count: 1 }]
                             })
                           }}
-                          className="h-8 px-4 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-90"
+                          className={`h-8 px-4 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all active:scale-90 disabled:opacity-50 ${isGrid ? "w-full" : ""}`}
                         >
                           {(item.stock ?? 0) <= 0 ? "OUT OF STOCK" : "ADD TO CART"}
                         </button>
