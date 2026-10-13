@@ -9,6 +9,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
 import { ContactSupportDialog } from "@/components/contact-support-dialog"
+import { ReceptionContactButtons } from "@/components/reception-contact"
 
 export function DesktopNav() {
     const pathname = usePathname()
@@ -79,6 +80,11 @@ export function DesktopNav() {
                 </div>
                 <div className="tile-3d rounded-2xl p-4">
                     <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">Visitor Support</p>
+                    {user && !isWorker(user.role) && (
+                        <div className="mb-2">
+                            <ReceptionContactButtons />
+                        </div>
+                    )}
                     <button
                         onClick={() => setSupportOpen(true)}
                         className="w-full py-2 bg-card border rounded-lg text-xs font-medium hover:bg-muted transition-colors"

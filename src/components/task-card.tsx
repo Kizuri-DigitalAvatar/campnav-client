@@ -97,7 +97,7 @@ export function TaskCard({
                     )}`}
                 >
                     {getStatusIcon(assignment.status)}
-                    <span>{assignment.status.replace("_", " ")}</span>
+                    <span>{assignment.status === "acknowledged" ? "accepted" : assignment.status.replace("_", " ")}</span>
                 </div>
             </div>
 
@@ -114,7 +114,7 @@ export function TaskCard({
                         "{assignment.requestDetails.description}"
                     </p>
                     {assignment.requestDetails.imageUrl && (
-                        <div className="relative aspect-video rounded-xl overflow-hidden border">
+                        <div className="relative aspect-video max-h-56 w-full rounded-xl overflow-hidden border">
                             <img src={assignment.requestDetails.imageUrl} alt="Request" className="object-cover w-full h-full" />
                         </div>
                     )}

@@ -40,6 +40,7 @@ import type * as rnrRequests from "../rnrRequests.js";
 import type * as rooms from "../rooms.js";
 import type * as safety from "../safety.js";
 import type * as search from "../search.js";
+import type * as settings from "../settings.js";
 import type * as tasks from "../tasks.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   rooms: typeof rooms;
   safety: typeof safety;
   search: typeof search;
+  settings: typeof settings;
   tasks: typeof tasks;
   test: typeof test;
   users: typeof users;

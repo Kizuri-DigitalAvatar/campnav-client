@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-provider"
 import { RoomField, useMyRoom } from "@/components/my-room"
+import { ReceptionContactCard } from "@/components/reception-contact"
 import { ProductViewToggle, useProductView } from "@/components/product-view-toggle"
 import { isAdmin } from "@/components/role-guard"
 import { Id } from "../../../../convex/_generated/dataModel"
@@ -262,18 +263,22 @@ export default function RoomServicePage() {
             </div>
           )}
           
-          <div className="bg-primary/5 rounded-[2rem] p-6 border-2 border-primary/10 relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 opacity-5 group-hover:scale-110 transition-transform duration-700">
-              <ShoppingCart size={80} className="text-primary" />
+          <ReceptionContactCard
+            fallback={
+            <div className="bg-primary/5 rounded-[2rem] p-6 border-2 border-primary/10 relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 opacity-5 group-hover:scale-110 transition-transform duration-700">
+                <ShoppingCart size={80} className="text-primary" />
+              </div>
+              <h4 className="text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 text-primary">
+                <Info className="h-4 w-4" />
+                Quick Assistance
+              </h4>
+              <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
+                Prefer speaking with our team? Call extension <span className="font-black text-primary text-sm">888</span> from your room phone for immediate assistance.
+              </p>
             </div>
-            <h4 className="text-xs font-black uppercase tracking-widest mb-2 flex items-center gap-2 text-primary">
-              <Info className="h-4 w-4" />
-              Quick Assistance
-            </h4>
-            <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
-              Prefer speaking with our team? Call extension <span className="font-black text-primary text-sm">888</span> from your room phone for immediate assistance.
-            </p>
-          </div>
+            }
+          />
         </div>
       ) : (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-3 duration-500">

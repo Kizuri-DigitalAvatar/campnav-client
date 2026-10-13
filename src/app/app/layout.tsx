@@ -15,7 +15,7 @@ export default function AppLayout({
         <div className="relative flex min-h-screen">
             <DesktopNav />
 
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col min-w-0">
                 <main className="flex-1 flex justify-center overflow-y-auto dot-grid">
                     <div className="w-full max-w-[400px] md:max-w-7xl px-4 py-4 md:pb-8">
                         <ClientLayout>{children}</ClientLayout>

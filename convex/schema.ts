@@ -2,6 +2,15 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // Camp-wide settings; a single document (key "camp")
+  campSettings: defineTable({
+    key: v.string(),
+    receptionPhone: v.optional(v.string()), // Dialled from the client app, e.g. "+232 76 123456"
+    receptionWhatsapp: v.optional(v.string()), // WhatsApp number in international format
+    receptionHours: v.optional(v.string()), // Free text, e.g. "24/7" or "07:00 – 22:00"
+    updatedAt: v.optional(v.number()),
+    updatedBy: v.optional(v.id("users")),
+  }).index("by_key", ["key"]),
   campsites: defineTable({
     name: v.string(),
     description: v.string(),
