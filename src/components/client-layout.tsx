@@ -8,6 +8,8 @@ import { DataPrefetcher } from "@/components/data-prefetcher"
 import { Header } from "@/components/header"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
+import { CelebrationHost } from "@/components/visuals"
+import { BottomNav } from "@/components/bottom-nav"
 
 // Staff cannot request services — these routes are resident/guest only
 const STAFF_BLOCKED_ROUTES = [
@@ -46,9 +48,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     return (
         <>
             <NotificationListener />
+            <CelebrationHost />
             {user && <DataPrefetcher />}
             <NavigationWrapper />
-            <AuthGuard>{isBlockedForStaff ? null : children}</AuthGuard>
+            <AuthGuard>
+                {/* Re-keyed per page so each screen eases in — navigation feels like one flow */}
+                <div key={pathname} className="va-page">{isBlockedForStaff ? null : children}</div>
+            </AuthGuard>
         </>
     )
 }
@@ -61,6 +67,7 @@ function NavigationWrapper() {
             <Header />
             {/* spacer for the fixed header */}
             <div className="h-16" />
+            <BottomNav />
         </>
     )
 }

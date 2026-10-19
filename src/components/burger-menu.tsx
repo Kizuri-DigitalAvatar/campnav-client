@@ -17,7 +17,7 @@ export function BurgerMenu() {
     const navItems = user && isWorker(user.role)
         ? [
             { href: "/app", label: "Home", icon: Home },
-            { href: "/app/assignments", label: "Tasks", icon: ClipboardList },
+            { href: "/app/assignments", label: "My Tasks", icon: ClipboardList },
             { href: "/app/history", label: "History", icon: History },
             { href: "/app/profile", label: "Profile", icon: User },
         ]

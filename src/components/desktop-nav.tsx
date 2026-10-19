@@ -1,100 +1,59 @@
 "use client"
 
-import Link from "next/link"
 import { useState } from "react"
-import { usePathname } from "next/navigation"
-import { Bell, Grid2X2, Home, User, LayoutDashboard, ClipboardList, History, Inbox, ShoppingBag } from "lucide-react"
-import { cn } from "@/lib/utils"
+import Link from "next/link"
 import { ModeToggle } from "@/components/mode-toggle"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
 import { ContactSupportDialog } from "@/components/contact-support-dialog"
 import { ReceptionContactButtons } from "@/components/reception-contact"
+import { CampnavLogo } from "@/components/campnav-logo"
+import { NavList } from "@/components/app-nav"
+
+/** Menu footer shared by the desktop sidebar and the mobile menu. */
+export function NavFooter() {
+    const { user } = useAuth()
+    const [supportOpen, setSupportOpen] = useState(false)
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between px-2">
+                <span className="text-xs font-medium text-muted-foreground">Appearance</span>
+                <ModeToggle />
+            </div>
+            <div className="tile-3d rounded-2xl p-4">
+                <p className="mb-2 text-[10px] font-bold uppercase text-muted-foreground">{user && isWorker(user.role) ? "Staff Support" : "Visitor Support"}</p>
+                {user && !isWorker(user.role) && (
+                    <div className="mb-2">
+                        <ReceptionContactButtons />
+                    </div>
+                )}
+                <button
+                    onClick={() => setSupportOpen(true)}
+                    className="w-full rounded-lg border bg-card py-2 text-xs font-medium transition-colors hover:bg-muted"
+                >
+                    Contact Support
+                </button>
+            </div>
+            <ContactSupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
+        </div>
+    )
+}
 
 export function DesktopNav() {
-    const pathname = usePathname()
-    const { user, loading } = useAuth()
-    const [supportOpen, setSupportOpen] = useState(false)
-
-    const navItems = user && isWorker(user.role)
-        ? [
-            { name: 'Home', href: '/app', icon: Home },
-            { name: 'Tasks', href: '/app/assignments', icon: ClipboardList },
-            { name: 'Available Tasks', href: '/app/available-tasks', icon: Inbox },
-            { name: 'History', href: '/app/history', icon: History },
-            { name: 'Profile', href: '/app/profile', icon: User },
-        ]
-        : [
-            { name: 'Home', href: '/app', icon: Home },
-            { name: 'Services', href: '/app/services', icon: Grid2X2 },
-            { name: 'My Orders', href: '/app/history', icon: ShoppingBag },
-            { name: 'Updates', href: '/app/updates', icon: Bell },
-            { name: 'Profile', href: '/app/profile', icon: User },
-        ]
-
     return (
-        <aside className="hidden md:flex flex-col w-64 glass-panel border-r border-y-0 border-l-0 shadow-card h-screen sticky top-0">
-            <div className="p-6 mb-4 flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl tile-3d-primary flex items-center justify-center">
-                    <LayoutDashboard size={18} className="text-primary-foreground" />
-                </div>
-                <h1 className="text-xl font-bold tracking-tight">CAMPNAV</h1>
-            </div>
+        <aside className="sticky top-0 hidden h-screen w-64 flex-col border-y-0 border-l-0 border-r glass-panel shadow-card md:flex">
+            <Link href="/app" className="mb-2 flex items-center gap-3 p-6">
+                <CampnavLogo size={38} alt="" />
+                <span className="text-xl font-bold tracking-tight">CAMPNAV</span>
+            </Link>
 
-            <nav className="flex-1 px-4 space-y-1">
-                {loading ? (
-                    <>
-                        {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="flex items-center space-x-3 px-4 py-3">
-                                <div className="w-5 h-5 rounded bg-muted animate-pulse" />
-                                <div className="w-24 h-4 rounded bg-muted animate-pulse" />
-                            </div>
-                        ))}
-                    </>
-                ) : (
-                    navItems.map((item: any) => (
-                        <Link
-                            key={item.name}
-                            href={item.href}
-                            className={cn(
-                                "flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group",
-                                pathname === item.href
-                                    ? "bg-primary text-primary-foreground shadow-primary-glow"
-                                    : "text-muted-foreground hover:bg-muted hover:translate-x-0.5"
-                            )}
-                        >
-                            <item.icon size={18} className={cn(
-                                "transition-transform group-hover:scale-110",
-                                pathname === item.href ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
-                            )} />
-                            <span>{item.name}</span>
-                        </Link>
-                    ))
-                )}
+            <nav aria-label="Main" className="flex-1 overflow-y-auto px-3">
+                <NavList />
             </nav>
 
-            <div className="p-4 mt-auto space-y-4">
-                <div className="flex items-center justify-between px-2">
-                    <span className="text-xs font-medium text-muted-foreground">Appearance</span>
-                    <ModeToggle />
-                </div>
-                <div className="tile-3d rounded-2xl p-4">
-                    <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2">Visitor Support</p>
-                    {user && !isWorker(user.role) && (
-                        <div className="mb-2">
-                            <ReceptionContactButtons />
-                        </div>
-                    )}
-                    <button
-                        onClick={() => setSupportOpen(true)}
-                        className="w-full py-2 bg-card border rounded-lg text-xs font-medium hover:bg-muted transition-colors"
-                    >
-                        Contact Support
-                    </button>
-                </div>
+            <div className="mt-auto p-4">
+                <NavFooter />
             </div>
-
-            <ContactSupportDialog open={supportOpen} onClose={() => setSupportOpen(false)} />
         </aside>
     )
 }

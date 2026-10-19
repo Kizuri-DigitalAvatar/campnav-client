@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, Lock, Utensils, UtensilsCrossed } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 
@@ -171,6 +172,7 @@ export default function MealsPage() {
         selections: payload,
       })
       setSavedAt(Date.now())
+      celebrate({ title: "Meals saved!", message: "The kitchen has your choices for the week.", kind: "meals" })
     } catch (error) {
       console.error(error)
       alert("Failed to save your meal selections.")

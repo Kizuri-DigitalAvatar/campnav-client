@@ -1,74 +1,24 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { Search, User, Menu, X, Home, Grid2X2, Bell, ChevronDown, Shirt, Utensils, ShoppingBag, Wrench, Brush, Truck, ClipboardList, ShoppingCart, Inbox } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Search, Menu, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth-provider"
-import { isWorker } from "@/components/role-guard"
 import { NotificationBell } from "@/components/notification-bell"
-import { cn } from "@/lib/utils"
-import { useQuery } from "convex-helpers/react/cache"
-import { api } from "../../convex/_generated/api"
 import { CampnavLogo } from "@/components/campnav-logo"
+import { NavList } from "@/components/app-nav"
+import { NavFooter } from "@/components/desktop-nav"
 
 export function Header() {
     const { user } = useAuth()
-    const userOrders = useQuery(api.orders.listForUser, user && !isWorker(user.role) ? { userId: user._id } : "skip")
-    const cartCount = useMemo(() => {
-        if (!userOrders) return 0
-        return userOrders
-            .filter((o: any) => o.source === "shop" && (o.status === "pending" || o.status === "in_progress"))
-            .reduce((sum: number, o: any) => sum + (o.quantity ?? 1), 0)
-    }, [userOrders])
     const [isMenuOpen, setIsMenuOpen] = useState(false)
-    const [openSubmenu, setOpenSubmenu] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState("")
     const [isSearchExpanded, setIsSearchExpanded] = useState(false)
-    const pathname = usePathname()
     const router = useRouter()
-
-    // Sub-services for the Services menu
-    const serviceItems = [
-        { href: "/app/laundry", label: "Laundry", icon: Shirt },
-        { href: "/app/room-service", label: "Room Service", icon: Utensils },
-        { href: "/app/shop", label: "Online Shop", icon: ShoppingBag },
-        { href: "/app/maintenance", label: "Maintenance", icon: Wrench },
-        { href: "/app/house-keeping", label: "Housekeeping", icon: Brush },
-        { href: "/app/delivery", label: "Delivery", icon: Truck },
-    ]
-
-    // Check if current user is a worker
-    const userIsWorker = user ? isWorker(user.role) : false
-
-    // Navigation items - different for workers vs staff/visitors
-    const navItems = userIsWorker
-        ? [
-            { href: "/app", label: "Home", icon: Home },
-            { href: "/app/assignments", label: "Assignments", icon: ClipboardList },
-            { href: "/app/available-tasks", label: "Available Tasks", icon: Inbox },
-            { href: "/app/shop", label: "Shop", icon: ShoppingBag },
-            { href: "/app/updates", label: "Announcements", icon: Bell },
-            { href: "/app/profile", label: "Profile", icon: User },
-        ]
-        : [
-            { href: "/app", label: "Home", icon: Home },
-            {
-                href: "/app/services",
-                label: "Services",
-                icon: Grid2X2,
-                subItems: serviceItems
-            },
-            { href: "/app/updates", label: "Announcements", icon: Bell },
-            { href: "/app/profile", label: "Profile", icon: User },
-        ]
-
-    const toggleSubmenu = (label: string) => {
-        setOpenSubmenu(openSubmenu === label ? null : label)
-    }
 
     const handleSearch = (e?: React.FormEvent) => {
         if (e) e.preventDefault()
@@ -80,12 +30,13 @@ export function Header() {
 
     return (
         <>
-            <header className="fixed top-0 inset-x-0 md:left-64 z-30 glass-panel border-b border-t-0 border-x-0">
+            <header className="fixed top-0 inset-x-0 md:left-64 z-40 glass-panel border-b border-t-0 border-x-0">
                 <div className="container flex items-center justify-between h-16 px-4 mx-auto md:px-6">
                     {/* Left: Logo */}
-                    <Link href="/app" className="flex items-center gap-2">
+                    {/* The desktop sidebar carries the logo, so the header shows it on phones only */}
+                    <Link href="/app" className="flex items-center gap-2 md:hidden">
                         <CampnavLogo size={34} alt="" priority />
-                        <span className="text-lg font-bold tracking-tight hidden md:inline-block">CAMPNAV</span>
+                        <span className="sr-only">CAMPNAV home</span>
                     </Link>
 
                     {/* Middle: Search Bar (Desktop) */}
@@ -128,27 +79,13 @@ export function Header() {
                     {/* Right: Notifications + Burger Menu + Profile */}
                     <div className="flex items-center gap-2">
                         <NotificationBell />
-                        {/* My Orders cart — guests/residents only (staff don't place orders) */}
-                        {user && !userIsWorker && (
-                            <Link
-                                href="/app/history"
-                                className="relative md:hidden h-10 w-10 rounded-full border bg-card flex items-center justify-center hover:border-primary/60 hover:text-primary transition-colors active:scale-95"
-                                aria-label="My orders"
-                                title="My orders"
-                            >
-                                <ShoppingCart className="h-5 w-5" />
-                                {cartCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                                        {cartCount}
-                                    </span>
-                                )}
-                            </Link>
-                        )}
                         <Button
                             variant="ghost"
                             size="icon"
                             className="md:hidden"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+                            aria-expanded={isMenuOpen}
                         >
                             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                         </Button>
@@ -166,79 +103,34 @@ export function Header() {
                 </div>
             </header>
 
-            {/* Mobile Sidebar Menu */}
+            {/* Mobile menu — same list as the desktop sidebar (see app-nav.tsx) */}
             {isMenuOpen && (
-                <div className="fixed inset-0 z-40 md:hidden">
-                    {/* Backdrop */}
+                <div className="fixed inset-0 z-50 md:hidden">
                     <div
                         className="fixed inset-0 bg-foreground/25 backdrop-blur-md animate-in fade-in duration-300"
                         onClick={() => setIsMenuOpen(false)}
                     />
-                    {/* Sidebar */}
-                    <div className="fixed inset-y-0 right-0 w-3/4 max-w-sm glass-panel shadow-pop flex flex-col animate-in slide-in-from-right duration-300">
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <span className="text-xl font-bold">Menu</span>
-                            <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Menu"
+                        className="fixed inset-y-0 right-0 flex w-[85%] max-w-sm flex-col glass-panel shadow-pop animate-in slide-in-from-right duration-300"
+                    >
+                        <div className="flex items-center justify-between border-b p-4">
+                            <Link href="/app" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2.5">
+                                <CampnavLogo size={32} alt="" />
+                                <span className="text-lg font-bold tracking-tight">CAMPNAV</span>
+                            </Link>
+                            <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)} aria-label="Close menu">
                                 <X className="h-6 w-6" />
                             </Button>
                         </div>
-                        <nav className="flex-1 overflow-y-auto p-6 space-y-6">
-                            {navItems.map((item) => (
-                                <div key={item.label} className="flex flex-col items-center w-full">
-                                    {item.subItems ? (
-                                        // Dropdown Item (Services)
-                                        <div className="w-full flex flex-col items-center">
-                                            <button
-                                                onClick={() => toggleSubmenu(item.label)}
-                                                className={cn(
-                                                    "flex items-center justify-center w-full space-x-2 text-lg font-medium transition-colors hover:text-primary py-2 px-4 rounded-lg",
-                                                    pathname.startsWith(item.href) || openSubmenu === item.label ? "text-primary bg-muted/50" : "text-muted-foreground"
-                                                )}
-                                            >
-                                                <item.icon className="h-5 w-5" />
-                                                <span>{item.label}</span>
-                                                <ChevronDown className={cn("h-4 w-4 ml-1 transition-transform", openSubmenu === item.label && "rotate-180")} />
-                                            </button>
-
-                                            {/* Dropdown Content */}
-                                            {openSubmenu === item.label && (
-                                                <div className="flex flex-col items-start w-full mt-2 pl-4 space-y-2 animate-in slide-in-from-top-2">
-                                                    {item.subItems.map((subItem) => (
-                                                        <Link
-                                                            key={subItem.href}
-                                                            href={subItem.href}
-                                                            onClick={() => setIsMenuOpen(false)}
-                                                            className={cn(
-                                                                "flex items-center space-x-3 w-full p-2 rounded-md text-lg transition-colors hover:bg-muted/80",
-                                                                pathname === subItem.href ? "text-primary font-semibold bg-muted" : "text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            <div className="p-1.5 rounded-full bg-background border shadow-sm">
-                                                                <subItem.icon className="h-3 w-3" />
-                                                            </div>
-                                                            <span>{subItem.label}</span>
-                                                        </Link>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        // Regular Item
-                                        <Link
-                                            href={item.href}
-                                            onClick={() => setIsMenuOpen(false)}
-                                            className={cn(
-                                                "flex items-center justify-center w-full space-x-2 text-lg font-medium transition-colors hover:text-primary py-2 px-4 rounded-lg",
-                                                pathname === item.href ? "text-primary bg-muted/50" : "text-muted-foreground"
-                                            )}
-                                        >
-                                            <item.icon className="h-5 w-5" />
-                                            <span>{item.label}</span>
-                                        </Link>
-                                    )}
-                                </div>
-                            ))}
+                        <nav aria-label="Main" className="flex-1 overflow-y-auto p-3">
+                            <NavList onNavigate={() => setIsMenuOpen(false)} />
                         </nav>
+                        <div className="border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                            <NavFooter />
+                        </div>
                     </div>
                 </div>
             )}

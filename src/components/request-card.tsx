@@ -1,81 +1,82 @@
 "use client"
 
-import { Card } from "@/components/ui/card"
-import { Wrench, Brush, Shirt, Clock, CheckCircle2, PlayCircle, Truck } from "lucide-react"
-import Link from "next/link"
+import { ChevronRight, Clock, ImageIcon } from "lucide-react"
+import { JourneyBar, ServiceArt, artForType } from "@/components/visuals"
+import { CardLink, StatusPill, statusLabel, type CollectionView } from "@/components/collection"
+import { timeAgo } from "@/components/home/dashboard-ui"
 
 interface RequestCardProps {
     request: any
+    /** "grid" is the full card; "list" is a compact row */
+    variant?: CollectionView
 }
 
-const getIcon = (type: string) => {
-    switch (type.toLowerCase()) {
-        case "maintenance": return <Wrench className="h-4 w-4" />
-        case "housekeeping": return <Brush className="h-4 w-4" />
-        case "laundry": return <Shirt className="h-4 w-4" />
-        case "delivery": return <Truck className="h-4 w-4" />
-        default: return <Clock className="h-4 w-4" />
-    }
-}
+const label = (type: string) => type.replace(/_/g, " ")
 
-const getStatusStyle = (status: string) => {
-    switch (status) {
-        case "pending": return "bg-blue-500/10 text-blue-600 border-blue-500/20"
-        case "in_progress": return "bg-amber-500/10 text-amber-600 border-amber-500/20"
-        case "completed": return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-        case "cancelled": return "bg-red-500/10 text-red-600 border-red-500/20"
-        default: return "bg-muted text-muted-foreground border-border"
-    }
-}
+/** A resident's service request; tapping anywhere opens its tracker. */
+export function RequestCard({ request: req, variant = "list" }: RequestCardProps) {
+    const art = artForType(req.type)
+    const live = req.status === "in_progress"
+    const link = <CardLink href={`/app/requests/${req._id}`} label={`Open request: ${label(req.type)}, ${statusLabel(req.status)}`} />
 
-const getStatusIcon = (status: string) => {
-    switch (status) {
-        case "pending": return <Clock className="h-3 w-3" />
-        case "in_progress": return <PlayCircle className="h-3 w-3" />
-        case "completed": return <CheckCircle2 className="h-3 w-3" />
-        default: return null
-    }
-}
-
-export function RequestCard({ request: req }: RequestCardProps) {
-    return (
-        <Link href={`/app/requests/${req._id}`} className="block transition-transform active:scale-[0.98]">
-            <Card className="relative overflow-hidden rounded-2xl border bg-card/90 p-4 shadow-sm hover:border-primary/30 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-3 flex-1">
-                        <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                {getIcon(req.type)}
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold capitalize">{req.type}</p>
-                                <p className="text-[10px] text-muted-foreground">Room {req.roomNumber}</p>
-                            </div>
+    if (variant === "list") {
+        return (
+            <article className="va-trigger glass-card group relative rounded-2xl p-3 sm:p-4 transition-transform active:scale-[0.985]">
+                {link}
+                <div className="flex items-start gap-3">
+                    <ServiceArt kind={art} size={48} motion={live ? "always" : "hover"} />
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                            <h3 className="truncate text-base font-black capitalize leading-tight">{label(req.type)}</h3>
+                            <StatusPill status={req.status} />
                         </div>
-
-                        <p className="text-xs text-foreground/80 leading-relaxed italic line-clamp-2">
-                            "{req.description}"
+                        <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                            Room {req.roomNumber} · {timeAgo(req.createdAt)}
                         </p>
-
-                        <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                <span>{new Date(req.createdAt).toLocaleDateString()}</span>
-                                <span>•</span>
-                                <span>{new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest border ${getStatusStyle(req.status)}`}>
-                                {getStatusIcon(req.status)}
-                                {req.status.replace("_", " ")}
-                            </div>
+                        {req.description && <p className="mt-1.5 line-clamp-1 text-xs text-foreground/75">{req.description}</p>}
+                        <div className="mt-2.5 flex items-center gap-2">
+                            <JourneyBar status={req.status} className="flex-1" />
+                            {req.imageUrl && <ImageIcon className="h-3.5 w-3.5 text-muted-foreground" aria-label="Has a photo" />}
                         </div>
                     </div>
-                    {req.imageUrl && (
-                        <div className="h-16 w-16 rounded-xl bg-muted overflow-hidden shrink-0 border border-border/50">
-                            <img src={req.imageUrl} alt="Request" className="h-full w-full object-cover" />
-                        </div>
-                    )}
+                    <ChevronRight className="mt-3 h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" aria-hidden />
                 </div>
-            </Card>
-        </Link>
+            </article>
+        )
+    }
+
+    return (
+        <article className="va-trigger glass-card group relative flex h-full flex-col gap-4 rounded-3xl p-4 sm:p-5 transition-transform active:scale-[0.99]">
+            {link}
+            <header className="flex items-start gap-3">
+                <ServiceArt kind={art} size={52} motion={live ? "always" : "hover"} />
+                <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-xl font-black capitalize leading-tight">{label(req.type)}</h3>
+                    <p className="mt-0.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Room {req.roomNumber}</p>
+                </div>
+                <StatusPill status={req.status} />
+            </header>
+
+            <JourneyBar status={req.status} showLabel />
+
+            {req.description && (
+                <p className="line-clamp-3 rounded-2xl border border-primary/10 bg-primary/[0.04] p-3.5 text-sm leading-relaxed text-foreground/80">
+                    &ldquo;{req.description}&rdquo;
+                </p>
+            )}
+            {req.imageUrl && (
+                <div className="h-36 w-full overflow-hidden rounded-xl border bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={req.imageUrl} alt="Photo from the request" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                </div>
+            )}
+
+            <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" aria-hidden />Sent {timeAgo(req.createdAt)}</span>
+                <span className="inline-flex items-center font-semibold text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                    Track <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                </span>
+            </div>
+        </article>
     )
 }

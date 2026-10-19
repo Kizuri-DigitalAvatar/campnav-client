@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CalendarClock, Plane } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 
@@ -49,6 +50,7 @@ export default function RnRPage() {
       })
       setReason("")
       setBookingReference("")
+      celebrate({ title: "Request sent!", message: "We will let you know when it is approved.", kind: "rnr" })
     } catch (error) {
       console.error(error)
       alert("Failed to submit RnR request.")

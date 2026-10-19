@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, X, Upload } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useRouter } from "next/navigation"
 
@@ -82,6 +83,7 @@ export default function MaintenanceRequestPage() {
         image: storageId,
       })
 
+      celebrate({ title: "Request sent!", message: "A technician will be with you soon.", kind: "maintenance" })
       router.push("/app/requests")
     } catch (err) {
       console.error("Failed to submit maintenance request:", err)

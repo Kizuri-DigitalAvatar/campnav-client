@@ -1,390 +1,157 @@
 "use client"
 
-import { useAuth } from "@/components/auth-provider"
-import { useMutation } from "convex/react"
+import { useMemo, useState } from "react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../../convex/_generated/api"
-import { Card } from "@/components/ui/card"
-import { ShoppingBag, Clock, ChevronRight, ClipboardList, XCircle, UploadCloud, Image as ImageIcon, Trash2 } from "lucide-react"
+import { useAuth } from "@/components/auth-provider"
 import { isWorker } from "@/components/role-guard"
 import { TaskCard } from "@/components/task-card"
-
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { useState } from "react"
-
-const ORDER_TABS = [
-    { key: "all", label: "All" },
-    { key: "shop", label: "Shop" },
-    { key: "room_service", label: "Room Service" },
-] as const
+import { OrderCard, needsConfirmation, orderTitle } from "@/components/order-card"
+import {
+    Collection, CollectionEmpty, CollectionItem, CollectionToolbar, FilterChips, PageHeader, PageSkeleton,
+    SearchField, SectionLabel, ViewToggle, matches, useViewPreference, type ChipOption,
+} from "@/components/collection"
 
 export default function HistoryPage() {
     const { user, loading } = useAuth()
-    const orders = useQuery(api.orders.listForUser, user && !isWorker(user.role) ? { userId: user._id } : "skip")
-    const assignments = useQuery(api.tasks.getWorkerAssignments, user && isWorker(user.role) ? { workerId: user._id } : "skip")
-    const confirmReceipt = useMutation(api.orders.confirmReceipt)
-    const generateUploadUrl = useMutation(api.images.generateUploadUrl)
-    const deleteOrder = useMutation(api.orders.deleteOrder)
+    if (loading || !user) return <PageSkeleton view="list" />
+    return isWorker(user.role) ? <WorkHistory userId={user._id} /> : <MyOrders userId={user._id} />
+}
 
-    const [showConfirm, setShowConfirm] = useState(false)
-    const [selectedOrder, setSelectedOrder] = useState<any>(null)
-    const [note, setNote] = useState("")
-    const [files, setFiles] = useState<File[]>([])
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [orderTab, setOrderTab] = useState<(typeof ORDER_TABS)[number]["key"]>("all")
+// ── Staff: finished work ──────────────────────────────────────────────────
 
-    const isLoading = loading || (user && (isWorker(user.role) ? assignments === undefined : orders === undefined))
+type WorkFilter = "all" | "completed" | "rated"
 
-    if (isLoading) {
-        return (
-            <div className="space-y-6 pb-20">
-                <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                        <Skeleton className="h-8 w-48" />
-                        <Skeleton className="h-4 w-64" />
-                    </div>
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                </div>
-                <div className="space-y-4">
-                    {[1, 2, 3].map(i => (
-                        <Skeleton key={i} className="h-32 rounded-2xl" />
-                    ))}
-                </div>
-            </div>
-        )
-    }
+function WorkHistory({ userId }: { userId: any }) {
+    const assignments = useQuery(api.tasks.getWorkerAssignments, { workerId: userId })
+    const [filter, setFilter] = useState<WorkFilter>("all")
+    const [query, setQuery] = useState("")
+    const [view, setView] = useViewPreference("campnav:work-history-view")
 
-    if (!user) return null
+    const done = useMemo(
+        () => (assignments ?? [])
+            .filter((a: any) => a.status === "completed" || a.status === "rated")
+            .sort((a: any, b: any) => (b.completedAt || b.assignedAt) - (a.completedAt || a.assignedAt)),
+        [assignments],
+    )
+    const visible = done
+        .filter((a: any) => filter === "all" || a.status === filter)
+        .filter((a: any) => matches(query, a.roomNumber, a.serviceType?.replace(/_/g, " "), a.requestDetails?.description, a.feedback))
 
-    const visibleOrders = (orders ?? []).filter((o: any) => orderTab === "all" || o.source === orderTab)
+    if (assignments === undefined) return <PageSkeleton view={view} />
 
-    if (isWorker(user.role)) {
-        const completedAssignments = (assignments || []).filter(a => a.status === "completed" || a.status === "rated")
-
-        return (
-            <div className="space-y-6 pb-20">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold">Work History</h1>
-                        <p className="text-xs text-muted-foreground mt-1 tracking-tight">Your completed tasks and feedback</p>
-                    </div>
-                    <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">
-                        {completedAssignments.length} Tasks
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    {assignments === undefined ? (
-                        <div className="animate-pulse space-y-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="h-40 bg-muted rounded-3xl" />
-                            ))}
-                        </div>
-                    ) : completedAssignments.length === 0 ? (
-                        <div className="text-center py-20 bg-muted/30 rounded-3xl border-2 border-dashed border-border/50">
-                            <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
-                            <p className="text-sm font-semibold text-muted-foreground">No completed tasks yet</p>
-                            <p className="text-xs text-muted-foreground/60 mt-1">Assignments you finish will appear here</p>
-                        </div>
-                    ) : (
-                        completedAssignments.map((assignment: any) => (
-                            <TaskCard
-                                key={assignment._id}
-                                assignment={assignment}
-                                // View only mode for history
-                                readOnly
-                            />
-                        ))
-                    )}
-                </div>
-            </div>
-        )
-    }
+    const rated = done.filter((a: any) => a.rating)
+    const avg = rated.length ? (rated.reduce((s: number, a: any) => s + a.rating, 0) / rated.length).toFixed(1) : null
+    const chips: ChipOption<WorkFilter>[] = [
+        { key: "all", label: "All", count: done.length },
+        { key: "completed", label: "Completed", count: done.filter((a: any) => a.status === "completed").length, dot: "bg-emerald-500" },
+        { key: "rated", label: "Rated", count: done.filter((a: any) => a.status === "rated").length, dot: "bg-violet-500" },
+    ]
 
     return (
-        <div className="space-y-6 pb-20">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold">My Orders</h1>
-                    <p className="text-xs text-muted-foreground mt-1 tracking-tight">Your shop and room service orders</p>
-                </div>
-                <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold">
-                    {orders?.length || 0} Orders
-                </div>
-            </div>
-
-            <div className="flex gap-2">
-                {ORDER_TABS.map((tab) => {
-                    const count = tab.key === "all" ? (orders?.length ?? 0) : (orders ?? []).filter((o: any) => o.source === tab.key).length
-                    const active = orderTab === tab.key
-                    return (
-                        <button
-                            key={tab.key}
-                            type="button"
-                            onClick={() => setOrderTab(tab.key)}
-                            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${active ? "border-primary bg-primary/10 text-primary" : "bg-background text-muted-foreground"}`}
-                        >
-                            {tab.label} <span className="opacity-60">{count}</span>
-                        </button>
-                    )
-                })}
-            </div>
-
-            <div className="space-y-4">
-                {orders === undefined ? (
-                    <div className="animate-pulse space-y-4">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="h-24 bg-muted rounded-2xl" />
-                        ))}
-                    </div>
-                ) : visibleOrders.length === 0 ? (
-                    <div className="text-center py-12 bg-muted/30 rounded-3xl border-2 border-dashed border-border/50">
-                        <ShoppingBag className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
-                        <p className="text-muted-foreground">
-                            {orderTab === "all" ? "No orders yet" : `No ${orderTab === "shop" ? "shop" : "room service"} orders yet`}
-                        </p>
-                    </div>
+        <div className="space-y-5 pb-10 md:space-y-6">
+            <PageHeader
+                art="tasks"
+                artTone="emerald"
+                title="Work History"
+                subtitle={done.length ? `${done.length} task${done.length === 1 ? "" : "s"} finished${avg ? ` · ★ ${avg} average rating` : ""}` : "Tasks you finish will appear here."}
+            />
+            {done.length > 0 && (
+                <>
+                    <FilterChips label="Filter finished tasks" options={chips} value={filter} onChange={setFilter} />
+                    <CollectionToolbar>
+                        <SearchField value={query} onChange={setQuery} placeholder="Search room, service or feedback" />
+                        <ViewToggle view={view} onChange={setView} label="History layout" />
+                    </CollectionToolbar>
+                </>
+            )}
+            {visible.length === 0 ? (
+                done.length === 0 ? (
+                    <CollectionEmpty art="tasks" title="No completed tasks yet" hint="Finish an assignment and it will show up here." action={{ label: "My tasks", href: "/app/assignments" }} />
                 ) : (
-                    visibleOrders.map((order: any) => (
-                        <Card key={order._id} className="p-4 rounded-2xl hover:shadow-md transition-shadow space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    {order.productImage ? (
-                                        <div className="h-12 w-12 rounded-xl overflow-hidden border bg-muted/40">
-                                            <img src={order.productImage} alt={order.summary} className="h-full w-full object-cover" />
-                                        </div>
-                                    ) : (
-                                        <div className="p-2 bg-primary/10 rounded-lg">
-                                            <ShoppingBag size={18} className="text-primary" />
-                                        </div>
-                                    )}
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-sm font-semibold capitalize truncate">{order.source.replace('_', ' ')}</p>
-                                            <Badge
-                                                variant="outline"
-                                                className={`border text-[10px] font-black uppercase tracking-widest ${
-                                                    order.status === 'completed'
-                                                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-200'
-                                                        : order.status === 'failed'
-                                                            ? 'bg-rose-500/10 text-rose-600 border-rose-200'
-                                                            : order.status === 'in_progress'
-                                                                ? 'bg-blue-500/10 text-blue-600 border-blue-200'
-                                                                : 'bg-amber-500/10 text-amber-700 border-amber-200'
-                                                }`}
-                                            >
-                                                {order.status.replace('_', ' ')}
-                                            </Badge>
-                                        </div>
-                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
-                                            <span className="inline-flex items-center gap-1"><Clock size={10} />{new Date(order.createdAt).toLocaleString()}</span>
-                                            {order.roomNumber && <span>· Room {order.roomNumber}</span>}
-                                            {order.placedBy && <span className="font-semibold text-primary">· Ordered for you by the camp team</span>}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-bold">Le {order.total.toFixed(2)}</p>
-                                    {order.confirmedAt ? (
-                                        <p className="text-[10px] text-emerald-500 font-medium">Verified</p>
-                                    ) : (
-                                        <p className="text-[10px] text-muted-foreground">Awaiting confirmation</p>
-                                    )}
-                                </div>
-                            </div>
+                    <CollectionEmpty art="search" title="Nothing matches" onReset={() => { setFilter("all"); setQuery("") }} />
+                )
+            ) : (
+                <Collection view={view} label="Finished tasks">
+                    {visible.map((a: any, i: number) => (
+                        <CollectionItem key={a._id} index={i}>
+                            <TaskCard assignment={a} variant={view} readOnly />
+                        </CollectionItem>
+                    ))}
+                </Collection>
+            )}
+        </div>
+    )
+}
 
-                            <div className="bg-muted/50 rounded-xl p-3 text-xs text-muted-foreground">
-                                {order.items?.length > 0 ? (
-                                    <ul className="space-y-2">
-                                        {order.items.map((item: any, i: number) => (
-                                            <li key={i} className="flex items-center gap-3">
-                                                <div className="h-10 w-10 shrink-0 rounded-lg overflow-hidden border bg-background flex items-center justify-center">
-                                                    {item.imageUrl
-                                                        ? <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
-                                                        : <ShoppingBag size={14} className="text-muted-foreground/50" />}
-                                                </div>
-                                                <span className="flex-1 min-w-0 truncate font-medium text-foreground">{item.name}</span>
-                                                <span className="shrink-0 font-semibold">×{item.quantity}</span>
-                                                {item.price !== undefined && (
-                                                    <span className="shrink-0 w-16 text-right">Le {(item.price * item.quantity).toFixed(2)}</span>
-                                                )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span className="truncate flex-1">
-                                            {order.quantity ? `${order.quantity}x ${order.summary}` : order.summary}
-                                        </span>
-                                        <ChevronRight size={14} className="text-muted-foreground/60" />
-                                    </div>
-                                )}
-                                {order.note && <p className="text-[11px] mt-2">Note: {order.note}</p>}
-                                {order.confirmationNote && (
-                                    <p className="text-[11px] text-foreground mt-2 font-medium">Note: {order.confirmationNote}</p>
-                                )}
-                                {order.evidenceUrls?.length > 0 && (
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        {order.evidenceUrls.map((url: string) => (
-                                            <div key={url} className="w-16 h-16 rounded-lg overflow-hidden border bg-background">
-                                                <img
-                                                    src={url}
-                                                    alt="delivery evidence"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+// ── Residents: shop & room-service orders ─────────────────────────────────
 
-                            {order.status !== 'completed' && order.status !== 'failed' && (
-                                <div className="flex gap-2 pt-1">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedOrder(order)
-                                            setShowConfirm(true)
-                                            setNote("")
-                                            setFiles([])
-                                        }}
-                                        className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest hover:opacity-90 transition-colors"
-                                    >
-                                        Verify delivery
-                                    </button>
-                                    {(order.status === 'pending' || order.status === 'in_progress') && (
-                                        <button
-                                            onClick={async () => {
-                                                if (!confirm("Cancel this order?")) return
-                                                try {
-                                                    await deleteOrder({ id: order._id })
-                                                } catch (e) {
-                                                    console.error(e)
-                                                    alert("Could not cancel order")
-                                                }
-                                            }}
-                                            className="h-10 px-3 rounded-xl border bg-muted text-muted-foreground text-[10px] uppercase tracking-widest flex items-center gap-1 hover:bg-muted/70 transition-colors"
-                                        >
-                                            <Trash2 className="w-3 h-3" />
-                                            Cancel
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </Card>
-                    ))
-                )}
-            </div>
+type OrderFilter = "all" | "confirm" | "shop" | "room_service"
 
-            {showConfirm && selectedOrder && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-card border rounded-3xl shadow-xl w-full max-w-lg p-6 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-xs uppercase tracking-widest text-muted-foreground font-black">Order verification</p>
-                                <p className="text-sm font-semibold">{selectedOrder.summary}</p>
-                            </div>
-                            <button
-                                onClick={() => setShowConfirm(false)}
-                                className="p-2 rounded-xl hover:bg-muted"
-                                disabled={isSubmitting}
-                            >
-                                <XCircle className="w-4 h-4" />
-                            </button>
-                        </div>
+function MyOrders({ userId }: { userId: any }) {
+    const orders = useQuery(api.orders.listForUser, { userId })
+    const [filter, setFilter] = useState<OrderFilter>("all")
+    const [query, setQuery] = useState("")
+    const [view, setView] = useViewPreference("campnav:orders-view")
 
-                        <div className="space-y-3">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                                Add a short note (optional)
-                            </label>
-                            <textarea
-                                value={note}
-                                onChange={(e) => setNote(e.target.value)}
-                                className="w-full h-24 rounded-2xl border bg-muted/50 px-4 py-3 text-sm focus:bg-background focus:ring-2 focus:ring-primary/20 outline-none"
-                                placeholder="E.g. Package delivered to my tent, all items intact"
-                                disabled={isSubmitting}
-                            />
-                        </div>
+    const list = useMemo(() => orders ?? [], [orders])
+    const visible = list
+        .filter((o: any) => filter === "all" || (filter === "confirm" ? needsConfirmation(o) : o.source === filter))
+        .filter((o: any) => matches(query, orderTitle(o), o.summary, o.roomNumber))
 
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">
-                                Evidence (photo or receipt)
-                            </label>
-                            <label className="flex items-center justify-center gap-2 h-32 border-2 border-dashed rounded-2xl cursor-pointer hover:bg-muted/50 transition-colors">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    className="hidden"
-                                    onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])}
-                                    disabled={isSubmitting}
-                                />
-                                <UploadCloud className="w-5 h-5 text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">
-                                    {files.length > 0 ? `${files.length} file(s) selected` : "Tap to add photos"}
-                                </span>
-                            </label>
-                            {files.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                    {files.map((file) => (
-                                        <div key={file.name} className="flex items-center gap-2 text-xs bg-muted rounded-lg px-3 py-2 border">
-                                            <ImageIcon className="w-4 h-4" />
-                                            <span className="truncate max-w-[160px]">{file.name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+    if (orders === undefined) return <PageSkeleton view={view} />
 
-                        <div className="flex gap-3 pt-2">
-                            <button
-                                onClick={() => setShowConfirm(false)}
-                                disabled={isSubmitting}
-                                className="flex-1 h-11 rounded-xl border bg-muted text-foreground text-xs font-black uppercase tracking-widest hover:bg-muted/80"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    if (!selectedOrder) return
-                                    setIsSubmitting(true)
-                                    try {
-                                        const evidenceIds: string[] = []
-                                        for (const file of files) {
-                                            const url = await generateUploadUrl()
-                                            const res = await fetch(url, {
-                                                method: "POST",
-                                                headers: { "Content-Type": file.type },
-                                                body: file,
-                                            })
-                                            const { storageId } = await res.json()
-                                            evidenceIds.push(storageId)
-                                        }
+    const toConfirm = list.filter(needsConfirmation).length
+    const chips: ChipOption<OrderFilter>[] = [
+        { key: "all", label: "All", count: list.length },
+        ...(toConfirm ? [{ key: "confirm" as const, label: "To confirm", count: toConfirm, dot: "bg-amber-500" }] : []),
+        { key: "shop", label: "Shop", count: list.filter((o: any) => o.source === "shop").length },
+        { key: "room_service", label: "Room service", count: list.filter((o: any) => o.source === "room_service").length },
+    ]
 
-                                        await confirmReceipt({
-                                            orderId: selectedOrder._id,
-                                            userId: user._id,
-                                            note: note || undefined,
-                                            evidence: evidenceIds,
-                                        })
+    const grouped = filter === "all" && !query.trim() && toConfirm > 0
+    const sections = grouped
+        ? [
+            { title: "On the way", hint: "Tap one to confirm it arrived", items: visible.filter(needsConfirmation) },
+            { title: "Earlier", hint: undefined, items: visible.filter((o: any) => !needsConfirmation(o)) },
+        ].filter((s) => s.items.length > 0)
+        : [{ title: "", hint: undefined, items: visible }]
 
-                                        setShowConfirm(false)
-                                        alert("Thanks! Delivery verified.")
-                                    } catch (error) {
-                                        console.error("Failed to confirm receipt", error)
-                                        alert("Could not submit verification. Please try again.")
-                                    } finally {
-                                        setIsSubmitting(false)
-                                    }
-                                }}
-                                disabled={isSubmitting}
-                                className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest hover:opacity-90 disabled:opacity-50"
-                            >
-                                {isSubmitting ? "Submitting..." : "Confirm receipt"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    return (
+        <div className="space-y-5 pb-10 md:space-y-6">
+            <PageHeader
+                art="shop"
+                title="My Orders"
+                subtitle={toConfirm ? `${toConfirm} order${toConfirm === 1 ? "" : "s"} on the way` : "Your shop and room service orders."}
+            />
+            {list.length > 0 && (
+                <>
+                    <FilterChips label="Filter orders" options={chips} value={filter} onChange={setFilter} />
+                    <CollectionToolbar>
+                        <SearchField value={query} onChange={setQuery} placeholder="Search your orders" />
+                        <ViewToggle view={view} onChange={setView} label="Order layout" />
+                    </CollectionToolbar>
+                </>
+            )}
+            {visible.length === 0 ? (
+                list.length === 0 ? (
+                    <CollectionEmpty art="shop" title="No orders yet" hint="Order food, drinks and essentials to your room." action={{ label: "Open the shop", href: "/app/shop" }} />
+                ) : (
+                    <CollectionEmpty art="search" title="Nothing matches" onReset={() => { setFilter("all"); setQuery("") }} />
+                )
+            ) : (
+                sections.map((section) => (
+                    <section key={section.title || "all"} className="space-y-3">
+                        {section.title && sections.length > 1 && <SectionLabel title={section.title} count={section.items.length} hint={section.hint} />}
+                        <Collection view={view} label={section.title || "Orders"}>
+                            {section.items.map((o: any, i: number) => (
+                                <CollectionItem key={o._id} index={i}>
+                                    <OrderCard order={o} variant={view} />
+                                </CollectionItem>
+                            ))}
+                        </Collection>
+                    </section>
+                ))
             )}
         </div>
     )

@@ -3,25 +3,22 @@
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { useParams, useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { api } from "../../../../../convex/_generated/api"
 import { Id } from "../../../../../convex/_generated/dataModel"
 import {
-    ArrowLeft, MapPin, Clock, CheckCircle, PlayCircle, AlertCircle,
-    User, FileText, Star, Image as ImageIcon, Mic, Tag
+    ArrowLeft, Clock, CheckCircle2, PlayCircle, AlertCircle, Loader2, MessageSquarePlus,
+    User, FileText, Star, Tag
 } from "lucide-react"
 import Link from "next/link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/components/auth-provider"
 import { isWorker, isCamperOrVisitor } from "@/components/role-guard"
-
-const STATUS_STYLES: Record<string, string> = {
-    completed: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-    in_progress: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-    acknowledged: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-    pending: "bg-red-500/10 text-red-600 border-red-500/20",
-    rated: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-}
+import { toast } from "sonner"
+import { MultimediaUpload } from "@/components/multimedia-upload"
+import { TaskStatusPill } from "@/components/task-card"
+import { ActionBar } from "@/components/collection"
+import { RequestJourney, ServiceArt, artForType, celebrate } from "@/components/visuals"
 
 const PRIORITY_STYLES: Record<string, string> = {
     urgent: "bg-red-500 text-white",
@@ -48,6 +45,23 @@ export default function AssignmentDetailPage() {
     const recordView = useMutation(api.tasks.recordView)
     const cancelRequest = useMutation(api.requests.cancel)
     const createReport = useMutation(api.reports.create)
+    const [busy, setBusy] = useState<string | null>(null)
+    const [isUpdating, setIsUpdating] = useState(false)
+
+    // One action at a time, with a spinner on the pressed button and feedback when it lands
+    async function run(key: string, action: () => Promise<unknown>, done?: () => void) {
+        if (busy) return
+        try { navigator.vibrate?.(15) } catch {}
+        setBusy(key)
+        try {
+            await action()
+            done?.()
+        } catch (err: any) {
+            toast.error("That didn't work", { description: err?.message?.split("Uncaught Error:").pop()?.trim() || "Please try again." })
+        } finally {
+            setBusy(null)
+        }
+    }
 
     const isLoading = task === undefined
 
@@ -89,7 +103,6 @@ export default function AssignmentDetailPage() {
         )
     }
 
-    const statusStyle = STATUS_STYLES[task.status] || STATUS_STYLES.pending
     const isMyTask = user && task.staffId === user._id
     const canAcknowledge = task.status === "pending" && user
     const canStart = task.status === "acknowledged" && isMyTask
@@ -108,50 +121,33 @@ export default function AssignmentDetailPage() {
             </div>
 
             {/* Header card */}
-            <div className="rounded-3xl border bg-card p-6 shadow-sm space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-muted-foreground" />
-                            <h1 className="text-2xl font-black tracking-tight">{task.roomNumber}</h1>
-                        </div>
-                        <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{task.serviceType}</p>
+            <div className="rounded-3xl border bg-card p-5 md:p-6 shadow-sm space-y-5">
+                <div className="flex items-start gap-3">
+                    <ServiceArt kind={artForType(task.serviceType)} size={60} motion={task.status === "in_progress" ? "always" : "ambient"} />
+                    <div className="min-w-0 flex-1 space-y-1">
+                        <h1 className="truncate text-2xl font-black tracking-tight">Room {task.roomNumber}</h1>
+                        <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">{task.serviceType.replace(/_/g, " ")}</p>
                     </div>
-                    <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${statusStyle}`}>
-                        {task.status.replace("_", " ")}
+                    <TaskStatusPill status={task.status} />
+                </div>
+
+                {/* Where the job stands, in pictures */}
+                <RequestJourney
+                    status={task.status}
+                    type={task.serviceType}
+                    showHeadline={false}
+                    times={{ sent: task.assignedAt, accepted: task.acknowledgedAt, started: task.startedAt, done: task.completedAt }}
+                />
+
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t pt-4 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                        <User className="w-3.5 h-3.5" />
+                        {task.staffId ? <>Assigned to <span className="font-semibold text-foreground">{task.staffName}</span></> : <span className="font-semibold text-foreground">Open to any staff member</span>}
                     </span>
-                </div>
-
-                {/* Staff */}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <User className="w-3.5 h-3.5" />
-                    <span>Assigned to: <span className="font-semibold text-foreground">{task.staffName}</span></span>
-                </div>
-
-                {/* Timeline */}
-                <div className="space-y-1.5 text-xs text-muted-foreground border-t pt-4">
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-3 h-3" />
-                        <span>Assigned: {formatTime(task.assignedAt)}</span>
-                    </div>
-                    {task.acknowledgedAt && (
-                        <div className="flex items-center gap-2">
-                            <CheckCircle className="w-3 h-3 text-amber-500" />
-                            <span>Acknowledged: {formatTime(task.acknowledgedAt)}</span>
-                        </div>
-                    )}
-                    {task.startedAt && (
-                        <div className="flex items-center gap-2">
-                            <PlayCircle className="w-3 h-3 text-blue-500" />
-                            <span>Started: {formatTime(task.startedAt)}</span>
-                        </div>
-                    )}
-                    {task.completedAt && (
-                        <div className="flex items-center gap-2">
-                            <CheckCircle className="w-3 h-3 text-emerald-500" />
-                            <span>Completed: {formatTime(task.completedAt)}</span>
-                        </div>
-                    )}
+                    <span className="inline-flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        {formatTime(task.assignedAt)}
+                    </span>
                 </div>
             </div>
 
@@ -166,12 +162,12 @@ export default function AssignmentDetailPage() {
                     <div className="flex items-center gap-2">
                         <Tag className="w-3 h-3 text-muted-foreground" />
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${PRIORITY_STYLES[task.requestDetails.priority] || PRIORITY_STYLES.low}`}>
-                            {task.requestDetails.priority} priority
+                            {task.requestDetails.priority === "pending_review" ? "needs review" : task.requestDetails.priority.replace(/_/g, " ")} priority
                         </span>
                     </div>
 
                     <p className="text-sm leading-relaxed text-foreground/80 italic border-l-2 border-primary/30 pl-3">
-                        "{task.requestDetails.description}"
+                        &ldquo;{task.requestDetails.description}&rdquo;
                     </p>
 
                     {task.requestDetails.imageUrl && (
@@ -223,40 +219,43 @@ export default function AssignmentDetailPage() {
                         </div>
                     </div>
                     {task.feedback && (
-                        <p className="text-sm italic text-foreground/70">"{task.feedback}"</p>
+                        <p className="text-sm italic text-foreground/70">&ldquo;{task.feedback}&rdquo;</p>
                     )}
                 </div>
             )}
 
-            {/* Action buttons */}
+            {/* Action buttons — pinned to the bottom of the screen on phones */}
             {user && (
-                <div className="flex gap-3">
+                <ActionBar>
                     {/* STAFF ONLY ACTIONS */}
                     {isWorker(user.role) && (
                         <>
                             {canAcknowledge && (
-                                <button
-                                    onClick={() => acknowledgeAssignment({ id: task._id, staffId: user._id }).then(() => router.refresh())}
-                                    className="flex-1 bg-primary text-primary-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/20"
-                                >
+                                <DetailButton tone="primary" busy={busy === "accept"} disabled={!!busy}
+                                    onClick={() => run("accept", () => acknowledgeAssignment({ id: task._id, staffId: user._id }), () => toast.success("Task accepted", { description: `Room ${task.roomNumber} is now yours.` }))}>
                                     Accept Task
-                                </button>
+                                </DetailButton>
                             )}
                             {canStart && (
-                                <button
-                                    onClick={() => startAssignment({ id: task._id }).then(() => router.refresh())}
-                                    className="flex-1 bg-primary text-primary-foreground h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/20"
-                                >
+                                <DetailButton tone="primary" busy={busy === "start"} disabled={!!busy} icon={<PlayCircle className="h-4 w-4" />}
+                                    onClick={() => run("start", () => startAssignment({ id: task._id }), () => toast.success("Work started", { description: "The resident can see you're on it." }))}>
                                     Start Work
-                                </button>
+                                </DetailButton>
                             )}
                             {canComplete && (
-                                <button
-                                    onClick={() => completeTask({ id: task._id }).then(() => router.push("/app/assignments"))}
-                                    className="flex-1 bg-emerald-600 text-white h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:opacity-90 transition-all"
-                                >
-                                    Mark Complete
-                                </button>
+                                <>
+                                    <DetailButton tone="neutral" busy={false} disabled={!!busy} icon={<MessageSquarePlus className="h-4 w-4" />}
+                                        onClick={() => setIsUpdating(true)}>
+                                        Add Update
+                                    </DetailButton>
+                                    <DetailButton tone="success" busy={busy === "complete"} disabled={!!busy} icon={<CheckCircle2 className="h-4 w-4" />}
+                                        onClick={() => run("complete", () => completeTask({ id: task._id }), () => {
+                                            celebrate({ title: "Task completed!", message: `Room ${task.roomNumber} is done. Nice work.`, kind: artForType(task.serviceType) })
+                                            router.push("/app/assignments")
+                                        })}>
+                                        Mark Complete
+                                    </DetailButton>
+                                </>
                             )}
                         </>
                     )}
@@ -307,8 +306,43 @@ export default function AssignmentDetailPage() {
                             Back to Assignments
                         </button>
                     )}
-                </div>
+                </ActionBar>
+            )}
+
+            {isUpdating && (
+                <MultimediaUpload
+                    assignmentId={task._id}
+                    onComplete={() => setIsUpdating(false)}
+                    onCancel={() => setIsUpdating(false)}
+                />
             )}
         </div>
+    )
+}
+
+function DetailButton({ children, onClick, busy, disabled, tone, icon }: {
+    children: React.ReactNode
+    onClick: () => void
+    busy: boolean
+    disabled?: boolean
+    tone: "primary" | "success" | "neutral"
+    icon?: React.ReactNode
+}) {
+    const tones = {
+        primary: "bg-primary text-primary-foreground shadow-primary-glow",
+        success: "bg-emerald-600 text-white",
+        neutral: "border bg-card text-foreground",
+    }
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-busy={busy || undefined}
+            className={`flex-1 inline-flex items-center justify-center gap-2 h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all disabled:opacity-60 ${tones[tone]}`}
+        >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+            {children}
+        </button>
     )
 }

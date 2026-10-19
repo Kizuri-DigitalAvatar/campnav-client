@@ -120,9 +120,9 @@ export function NotificationBell() {
                     {/* click-away backdrop */}
                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
                     <div className="fixed md:absolute right-2 md:right-0 top-16 md:top-12 z-50 w-[calc(100vw-1rem)] max-w-sm bg-background border-2 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="px-5 py-4 border-b flex items-center justify-between bg-muted/30">
+                        <div className="px-5 py-3.5 border-b bg-muted/30">
                             <h3 className="text-sm font-black uppercase tracking-widest">Notifications</h3>
-                            <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                            <span className="mt-0.5 block text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                                 {worker ? "Assignments · Alerts · Feedback" : "Requests · Alerts · Events"}
                             </span>
                         </div>

@@ -13,6 +13,7 @@ import {
 import Link from "next/link"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
+import { MoodFace, RequestJourney, celebrate } from "@/components/visuals"
 
 const RATING_LABELS = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"]
 
@@ -60,8 +61,9 @@ export default function RequestDetailPage() {
                 feedback: feedback.trim() || undefined,
             })
             setIsRatingOpen(false)
-            toast.success("Thank you for your feedback!", {
-                description: `You rated ${request.taskDetails?.staffName || "the staff"} ${rating}/5 stars.`,
+            celebrate({
+                title: "Thank you!",
+                message: `You rated ${request.taskDetails?.staffName || "the staff"} ${rating} out of 5.`,
             })
         } catch (error) {
             console.error(error)
@@ -124,6 +126,31 @@ export default function RequestDetailPage() {
                 </button>
                 <span>/</span>
                 <span className="text-foreground font-medium">Request Tracker</span>
+            </div>
+
+            {/* Picture journey: where the request stands, at a glance */}
+            <div className="rounded-3xl border bg-card p-5 md:p-6 shadow-sm">
+                <RequestJourney
+                    status={request.status}
+                    type={request.type}
+                    staffName={task?.staffName}
+                    times={{
+                        sent: request.createdAt,
+                        accepted: task?.acknowledgedAt,
+                        started: task?.startedAt,
+                        done: task?.completedAt,
+                    }}
+                    action={request.status === "completed" && task ? (
+                        <button
+                            type="button"
+                            onClick={() => setIsRatingOpen(true)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 h-10 text-xs font-black uppercase tracking-widest text-primary-foreground shadow-primary-glow hover:brightness-110 transition-all"
+                        >
+                            <Star className="w-4 h-4" />
+                            Rate Service
+                        </button>
+                    ) : undefined}
+                />
             </div>
 
             {/* Main Info Card */}
@@ -319,18 +346,6 @@ export default function RequestDetailPage() {
                 </div>
             )}
 
-            {/* Rate the completed service */}
-            {request.status === "completed" && task && (
-                <button
-                    type="button"
-                    onClick={() => setIsRatingOpen(true)}
-                    className="flex items-center justify-center gap-2 w-full bg-primary text-primary-foreground h-14 rounded-2xl font-black text-xs uppercase tracking-widest hover:brightness-110 hover:-translate-y-px active:translate-y-0 transition-all shadow-primary-glow"
-                >
-                    <Star className="w-4 h-4" />
-                    Rate Service
-                </button>
-            )}
-
             {/* Rating popup */}
             {isRatingOpen && task && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -357,8 +372,9 @@ export default function RequestDetailPage() {
                             </button>
                         </div>
 
-                        {/* Star picker */}
+                        {/* Star picker — the face reacts to the score */}
                         <div className="flex flex-col items-center gap-2 py-2">
+                            <MoodFace rating={hoverRating || rating} size={80} className="mb-1" />
                             <div className="flex gap-2">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button

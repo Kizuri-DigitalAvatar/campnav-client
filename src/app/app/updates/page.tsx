@@ -1,181 +1,116 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useEffect, useMemo, useState, Suspense } from "react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../../convex/_generated/api"
-import { Card } from "@/components/ui/card"
-import { List, Calendar as CalendarIcon, Clock, MapPin, ChevronLeft, ChevronRight, Megaphone } from "lucide-react"
+import { List, LayoutGrid, Calendar as CalendarIcon, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
+import { AnnouncementCard, ActivityCard } from "@/components/update-cards"
+import {
+  Collection, CollectionEmpty, CollectionItem, CollectionToolbar, FilterChips, PageHeader, PageSkeleton,
+  SearchField, ViewToggle, matches, useViewPreference, type ChipOption, type ViewOption,
+} from "@/components/collection"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 
+type Tab = "announcements" | "activities"
+type ActivityView = "grid" | "list" | "calendar"
+
+const ACTIVITY_VIEWS: ViewOption<ActivityView>[] = [
+  { value: "grid", label: "Grid view", icon: LayoutGrid },
+  { value: "list", label: "List view", icon: List },
+  { value: "calendar", label: "Calendar view", icon: CalendarIcon },
+]
+
 function UpdatesPageContent() {
   const searchParams = useSearchParams()
-  const announcements = useQuery(api.announcements.list, { priority: "all" }) ?? []
-  const activities = useQuery(api.activities.list) ?? []
+  const announcementsData = useQuery(api.announcements.list, { priority: "all" })
+  const activitiesData = useQuery(api.activities.list)
+  const [query, setQuery] = useState("")
+  // The URL picks the starting tab (links from Home), the chips change it after
+  const [tabChoice, setTab] = useState<Tab | null>(null)
+  const tab: Tab = tabChoice ?? (searchParams.get("tab") === "activities" ? "activities" : "announcements")
+  const [newsView, setNewsView] = useViewPreference("campnav:announcements-view")
+  const [eventView, setEventView] = useViewPreference<ActivityView>("campnav:activities-view", "auto", ["grid", "list", "calendar"])
 
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "announcements")
-  const [viewMode, setViewMode] = useState(searchParams.get("view") || "list")
-
+  // "?view=calendar" from the Home calendar link opens the calendar once
+  const urlView = searchParams.get("view")
   useEffect(() => {
-    const tab = searchParams.get("tab")
-    const view = searchParams.get("view")
-    if (tab) setActiveTab(tab)
-    if (view) setViewMode(view)
-  }, [searchParams])
+    if (urlView === "calendar") setEventView("calendar")
+  }, [urlView, setEventView])
+
+  const announcements = useMemo(
+    () => [...(announcementsData ?? [])].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)),
+    [announcementsData],
+  )
+  const activities = useMemo(
+    () => [...(activitiesData ?? [])].sort((a: any, b: any) => a.date - b.date),
+    [activitiesData],
+  )
+
+  if (announcementsData === undefined || activitiesData === undefined) return <PageSkeleton view={newsView} />
+
+  const startOfToday = new Date().setHours(0, 0, 0, 0)
+  const upcoming = activities.filter((a: any) => a.date >= startOfToday)
+  const shownNews = announcements.filter((a: any) => matches(query, a.title, a.content, a.priority))
+  const shownEvents = (eventView === "calendar" ? activities : upcoming)
+    .filter((a: any) => matches(query, a.title, a.description, a.category, a.location))
+
+  const chips: ChipOption<Tab>[] = [
+    { key: "announcements", label: "Announcements", count: announcements.length },
+    { key: "activities", label: "Activities", count: upcoming.length },
+  ]
 
   return (
-    <div className="space-y-6 pb-20 md:pb-8">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Board</h1>
-        <p className="text-xs text-muted-foreground">
-          What&apos;s happening around CAMPNAV.
-        </p>
-      </header>
+    <div className="space-y-5 pb-10 md:space-y-6">
+      <PageHeader art="news" title="Updates" subtitle="What's happening around the camp." />
 
-      <div className="w-full">
-        <div className="grid w-full grid-cols-2 rounded-2xl bg-muted/50 p-1 mb-6">
-          <button
-            onClick={() => setActiveTab("announcements")}
-            className={`py-2 text-sm font-medium rounded-xl transition-all ${activeTab === 'announcements' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground'}`}
-          >
-            Announcements
-          </button>
-          <button
-            onClick={() => setActiveTab("activities")}
-            className={`py-2 text-sm font-medium rounded-xl transition-all ${activeTab === 'activities' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground'}`}
-          >
-            Activities
-          </button>
-        </div>
+      <FilterChips label="Choose updates" options={chips} value={tab} onChange={(t) => { setTab(t); setQuery("") }} />
 
-        {activeTab === "announcements" && (
-          <div className="space-y-4">
-            {announcements.map((item: any) => (
-              <Link key={item._id} href={`/app/updates/announcements/${item._id}`}>
-                <Card
-                  className="group overflow-hidden rounded-3xl border border-border/50 bg-card/40 backdrop-blur-sm p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 border-l-4 border-l-primary"
-                >
-                  <div className="flex gap-4">
-                    <div className="h-24 w-28 rounded-2xl bg-muted overflow-hidden shrink-0 shadow-inner">
-                      {item.coverImageUrl ? (
-                        <img src={item.coverImageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 gap-1">
-                          <Megaphone size={20} className="text-muted-foreground/30" />
-                          <span className="text-[8px] text-muted-foreground font-black uppercase tracking-tighter">{item.priority}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-2 py-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-full ${item.priority === 'High' || item.priority === 'high'
-                          ? 'bg-destructive/10 text-destructive'
-                          : 'bg-primary/10 text-primary'
-                          }`}>
-                          {item.priority}
-                        </span>
-                        <span className="text-[9px] font-bold text-muted-foreground/50">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <h2 className="text-base font-bold leading-tight group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h2>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground line-clamp-2 font-medium">
-                        {item.content}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              </Link>
+      <CollectionToolbar>
+        <SearchField value={query} onChange={setQuery} placeholder={tab === "announcements" ? "Search announcements" : "Search events"} />
+        {tab === "announcements" ? (
+          <ViewToggle view={newsView} onChange={setNewsView} label="Announcement layout" />
+        ) : (
+          <ViewToggle view={eventView} onChange={setEventView} options={ACTIVITY_VIEWS} label="Event layout" />
+        )}
+      </CollectionToolbar>
+
+      {tab === "announcements" ? (
+        shownNews.length === 0 ? (
+          announcements.length === 0
+            ? <CollectionEmpty art="news" title="No announcements" hint="Camp news will show up here." />
+            : <CollectionEmpty art="search" title="Nothing matches" onReset={() => setQuery("")} />
+        ) : (
+          <Collection view={newsView} label="Announcements">
+            {shownNews.map((item: any, i: number) => (
+              <CollectionItem key={item._id} index={i}>
+                <AnnouncementCard item={item} variant={newsView} />
+              </CollectionItem>
             ))}
-            {announcements.length === 0 && (
-              <div className="p-12 text-center text-muted-foreground italic text-xs border rounded-3xl border-dashed">
-                No announcements at this time.
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "activities" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold uppercase tracking-tighter text-muted-foreground">Scheduled Events</h2>
-              <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground'}`}
-                >
-                  <List size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode("calendar")}
-                  className={`p-1.5 rounded-md transition-colors ${viewMode === 'calendar' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground'}`}
-                >
-                  <CalendarIcon size={14} />
-                </button>
-              </div>
-            </div>
-
-            {viewMode === "list" ? (
-              <div className="space-y-4">
-                {activities.map((activity: any) => (
-                  <Link key={activity._id} href={`/app/updates/activities/${activity._id}`}>
-                    <Card className="p-4 rounded-2xl border bg-card/90 shadow-sm overflow-hidden relative group">
-                      <div className={`absolute top-0 left-0 w-1 h-full ${activity.category === 'Social' ? 'bg-blue-500' :
-                        activity.category === 'Outdoor' ? 'bg-emerald-500' :
-                          activity.category === 'Workshop' ? 'bg-amber-500' : 'bg-primary'
-                        }`} />
-                      <div className="flex justify-between items-start mb-2 pl-2">
-                        <div>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{activity.category}</p>
-                          <h3 className="text-base font-bold leading-tight mt-0.5">{activity.title}</h3>
-                        </div>
-                      </div>
-                      {activity.coverImageUrl && (
-                        <div className="mb-3 overflow-hidden rounded-xl border border-border/60 bg-muted">
-                          <img
-                            src={activity.coverImageUrl}
-                            alt={activity.title}
-                            className="w-full h-36 object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                          />
-                        </div>
-                      )}
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-4 pl-2 font-medium leading-relaxed">
-                        {activity.description}
-                      </p>
-                      <div className="flex flex-wrap gap-x-4 gap-y-2 pl-2 pt-2 border-t border-border/50">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary/80">
-                          <Clock size={12} />
-                          {new Date(activity.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} at {activity.time}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                          <MapPin size={12} />
-                          {activity.location}
-                        </div>
-                      </div>
-                    </Card>
-                  </Link>
-                ))}
-                {activities.length === 0 && (
-                  <div className="p-12 text-center text-muted-foreground italic text-xs border rounded-3xl border-dashed">
-                    No activities scheduled yet.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <ActivitiesCalendar activities={activities} />
-            )}
-          </div>
-        )}
-      </div>
+          </Collection>
+        )
+      ) : eventView === "calendar" ? (
+        <ActivitiesCalendar activities={shownEvents} />
+      ) : shownEvents.length === 0 ? (
+        upcoming.length === 0
+          ? <CollectionEmpty art="calendar" title="No upcoming events" hint="Check back for camp activities." />
+          : <CollectionEmpty art="search" title="Nothing matches" onReset={() => setQuery("")} />
+      ) : (
+        <Collection view={eventView} label="Upcoming events">
+          {shownEvents.map((item: any, i: number) => (
+            <CollectionItem key={item._id} index={i}>
+              <ActivityCard item={item} variant={eventView} />
+            </CollectionItem>
+          ))}
+        </Collection>
+      )}
     </div>
   )
 }
 
 export default function UpdatesPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
+    <Suspense fallback={<PageSkeleton view="list" />}>
       <UpdatesPageContent />
     </Suspense>
   )

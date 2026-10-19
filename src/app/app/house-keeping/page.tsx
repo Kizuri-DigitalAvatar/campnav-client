@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, ChevronDown } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { useRouter } from "next/navigation"
@@ -36,7 +37,7 @@ export default function TasksPage() {
         priority: "low",
         specialAttention,
       })
-      alert("Housekeeping request submitted!")
+      celebrate({ title: "Request sent!", message: "Your room will be cleaned soon.", kind: "housekeeping" })
       router.push("/app/requests")
     } catch (err) {
       console.error(err)

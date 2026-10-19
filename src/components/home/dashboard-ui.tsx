@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useId, type ElementType, type ReactNode } from "react"
 import { ChevronRight } from "lucide-react"
+import { CountUp, DaytimeArt, EmptyArt, type ArtKind, type ArtTone } from "@/components/visuals"
 
 // Shared building blocks for the resident and staff home dashboards
 
@@ -28,16 +29,19 @@ export function DashboardHeader({
   const now = new Date()
   return (
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-muted-foreground">
-          <time dateTime={now.toISOString().slice(0, 10)}>
-            {now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
-          </time>
-        </p>
-        <h1 className="mt-1 text-2xl md:text-3xl font-black tracking-tight truncate">
-          {greeting(now)}, {name.split(" ")[0]}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+      <div className="flex min-w-0 items-center gap-3 md:gap-4">
+        <DaytimeArt size={56} className="md:h-16 md:w-16" />
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-muted-foreground">
+            <time dateTime={now.toISOString().slice(0, 10)}>
+              {now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+            </time>
+          </p>
+          <h1 className="mt-1 text-2xl md:text-3xl font-black tracking-tight truncate">
+            {greeting(now)}, {name.split(" ")[0]}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        </div>
       </div>
       {badges && <div className="flex flex-wrap items-center gap-2">{badges}</div>}
     </header>
@@ -102,7 +106,9 @@ export function StatTile({
         {loading ? (
           <span className="block h-8 w-12 rounded-lg bg-muted animate-pulse" />
         ) : (
-          <p className="text-2xl md:text-3xl font-black tabular-nums leading-none">{value}</p>
+          <p className="text-2xl md:text-3xl font-black tabular-nums leading-none">
+            {typeof value === "number" ? <CountUp value={value} /> : value}
+          </p>
         )}
         <p className="mt-1.5 text-xs font-semibold text-foreground">{label}</p>
         {hint && <p className="mt-0.5 text-[11px] text-muted-foreground truncate">{hint}</p>}
@@ -147,16 +153,19 @@ export function Panel({
   )
 }
 
-export function EmptyState({ icon: Icon, title, hint, action }: {
-  icon: ElementType
+export function EmptyState({ icon: Icon, art, artTone, title, hint, action }: {
+  icon?: ElementType
+  /** Animated illustration shown instead of the icon */
+  art?: ArtKind
+  artTone?: ArtTone
   title: string
   hint?: string
   action?: { label: string; href: string }
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20 px-4 py-8 text-center">
-      <Icon className="h-7 w-7 text-muted-foreground" aria-hidden />
-      <p className="mt-2 text-sm font-semibold">{title}</p>
+      {art ? <EmptyArt kind={art} tone={artTone} size={72} /> : Icon && <Icon className="h-7 w-7 text-muted-foreground" aria-hidden />}
+      <p className={`${art ? "mt-3" : "mt-2"} text-sm font-semibold`}>{title}</p>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       {action && (
         <Link href={action.href} className={`mt-3 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 ${focusRing}`}>

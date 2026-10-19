@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Upload, X, Plus, Minus, Info } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useRouter } from "next/navigation"
 
@@ -103,7 +104,8 @@ export default function LaundryPage() {
         laundryItems: selectedLaundryItems,
         starch: starch
       })
-      
+
+      celebrate({ title: "Request sent!", message: "We will collect your clothes soon.", kind: "laundry" })
       router.push("/app/requests")
     } catch (err) {
       console.error(err)
