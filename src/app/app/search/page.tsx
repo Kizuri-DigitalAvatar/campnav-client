@@ -1,148 +1,136 @@
 "use client"
 
-import { Suspense } from "react"
+import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useQuery } from "convex-helpers/react/cache"
+import { ChevronRight } from "lucide-react"
 import { api } from "../../../../convex/_generated/api"
-import { Search, Package, Megaphone, Calendar, ArrowLeft, Clock, MapPin } from "lucide-react"
-import Link from "next/link"
-import { Card } from "@/components/ui/card"
+import { ServiceArt } from "@/components/visuals"
+import { AnnouncementCard, ActivityCard } from "@/components/update-cards"
+import {
+    CardLink, Collection, CollectionEmpty, CollectionItem, CollectionToolbar, FilterChips, PageHeader, PageSkeleton,
+    SectionLabel, ViewToggle, useViewPreference, type ChipOption, type CollectionView,
+} from "@/components/collection"
+
+type Kind = "all" | "announcements" | "activities" | "products"
+
+function ProductCard({ product, variant }: { product: any; variant: CollectionView }) {
+    const link = <CardLink href={`/app/shop?product=${product._id}`} label={`${product.name}, Le ${product.price.toFixed(2)}`} />
+    const picture = (cls: string, size: number) => product.imageUrl ? (
+        <div className={`shrink-0 overflow-hidden bg-muted ${cls}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={product.imageUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        </div>
+    ) : <ServiceArt kind="shop" size={size} />
+
+    if (variant === "list") {
+        return (
+            <article className="va-trigger glass-card group relative flex items-center gap-3 rounded-2xl p-3 transition-transform active:scale-[0.985]">
+                {link}
+                {picture("h-14 w-14 rounded-xl border", 56)}
+                <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-black">{product.name}</h3>
+                    <p className="line-clamp-1 text-xs text-muted-foreground">{product.description}</p>
+                </div>
+                <p className="shrink-0 text-sm font-black text-primary">Le {product.price.toFixed(2)}</p>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" aria-hidden />
+            </article>
+        )
+    }
+    return (
+        <article className="va-trigger glass-card group relative flex h-full flex-col overflow-hidden rounded-3xl transition-transform active:scale-[0.99]">
+            {link}
+            {product.imageUrl ? picture("h-36 w-full border-b", 0) : (
+                <div className="flex h-36 items-center justify-center border-b bg-muted/30"><ServiceArt kind="shop" size={72} /></div>
+            )}
+            <div className="flex flex-1 flex-col gap-1 p-4">
+                <h3 className="truncate text-sm font-black">{product.name}</h3>
+                <p className="line-clamp-2 flex-1 text-xs text-muted-foreground">{product.description}</p>
+                <p className="pt-1 text-base font-black text-primary">Le {product.price.toFixed(2)}</p>
+            </div>
+        </article>
+    )
+}
 
 function SearchResults() {
     const searchParams = useSearchParams()
     const query = searchParams.get("q") ?? ""
     const results = useQuery(api.search.global, { query })
+    const [kind, setKind] = useState<Kind>("all")
+    const [view, setView] = useViewPreference("campnav:search-view")
 
-    if (results === undefined) {
+    if (results === undefined) return <PageSkeleton view={view} />
+
+    const total = results.products.length + results.announcements.length + results.activities.length
+    const header = (
+        <PageHeader
+            art="search"
+            title={query ? `“${query}”` : "Search"}
+            subtitle={total ? `${total} result${total === 1 ? "" : "s"} across the camp` : undefined}
+            back
+        />
+    )
+
+    if (total === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-20 animate-pulse">
-                <Search className="h-10 w-10 text-muted-foreground/20 mb-4" />
-                <p className="text-muted-foreground text-sm">Searching...</p>
+            <div className="space-y-5">
+                {header}
+                <CollectionEmpty
+                    art="search"
+                    title="No results found"
+                    hint={`We couldn't find anything matching “${query}”. Try a different word.`}
+                    action={{ label: "Back to home", href: "/app" }}
+                />
             </div>
         )
     }
 
-    const hasResults =
-        results.products.length > 0 ||
-        results.announcements.length > 0 ||
-        results.activities.length > 0
+    const chips: ChipOption<Kind>[] = [
+        { key: "all", label: "All", count: total },
+        { key: "announcements", label: "Announcements", count: results.announcements.length },
+        { key: "activities", label: "Events", count: results.activities.length },
+        { key: "products", label: "Products", count: results.products.length },
+    ].filter((c) => c.key === "all" || c.count > 0) as ChipOption<Kind>[]
 
-    if (!hasResults) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-                <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                    <Search className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h2 className="text-xl font-bold mb-2">No results found</h2>
-                <p className="text-muted-foreground text-sm max-w-xs">
-                    We couldn't find anything matching "{query}". Try different keywords or check your spelling.
-                </p>
-                <Link href="/app" className="mt-8 text-primary font-semibold hover:underline flex items-center gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to Home
-                </Link>
-            </div>
-        )
-    }
+    const show = (k: Kind) => (kind === "all" || kind === k)
 
     return (
-        <div className="space-y-8 pb-10">
-            <header className="space-y-1">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Search Results</p>
-                <h1 className="text-2xl font-bold">Results for "{query}"</h1>
-            </header>
+        <div className="space-y-5 pb-10 md:space-y-6">
+            {header}
+            <FilterChips label="Filter results" options={chips} value={kind} onChange={setKind} />
+            <CollectionToolbar>
+                <div className="flex-1" />
+                <ViewToggle view={view} onChange={setView} label="Result layout" />
+            </CollectionToolbar>
 
-            {/* Announcements Section */}
-            {results.announcements.length > 0 && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Megaphone className="h-5 w-5 text-primary" />
-                        <h2 className="text-lg font-bold">Announcements</h2>
-                    </div>
-                    <div className="space-y-4">
-                        {results.announcements.map((announcement) => (
-                            <Link key={announcement._id} href={`/app/updates?id=${announcement._id}`}>
-                                <Card className="p-4 hover:shadow-md transition-shadow">
-                                    <div className="flex gap-4">
-                                        {announcement.coverImageUrl && (
-                                            <div className="h-16 w-16 shrink-0 rounded-lg overflow-hidden border">
-                                                <img src={announcement.coverImageUrl} alt="" className="h-full w-full object-cover" />
-                                            </div>
-                                        )}
-                                        <div className="space-y-1">
-                                            <h3 className="font-semibold text-sm leading-tight">{announcement.title}</h3>
-                                            <p className="text-xs text-muted-foreground line-clamp-2">
-                                                {announcement.content}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Card>
-                            </Link>
+            {show("announcements") && results.announcements.length > 0 && (
+                <section className="space-y-3">
+                    <SectionLabel title="Announcements" count={results.announcements.length} />
+                    <Collection view={view} label="Announcements">
+                        {results.announcements.map((a, i) => (
+                            <CollectionItem key={a._id} index={i}><AnnouncementCard item={a} variant={view} /></CollectionItem>
                         ))}
-                    </div>
+                    </Collection>
                 </section>
             )}
-
-            {/* Activities Section */}
-            {results.activities.length > 0 && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        <h2 className="text-lg font-bold">Activities</h2>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                        {results.activities.map((activity) => (
-                            <Card key={activity._id} className="p-4">
-                                <h3 className="font-semibold text-sm mb-2">{activity.title}</h3>
-                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                                    <div className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3" />
-                                        <span>{activity.time}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <MapPin className="h-3 w-3" />
-                                        <span>{activity.location}</span>
-                                    </div>
-                                </div>
-                            </Card>
+            {show("activities") && results.activities.length > 0 && (
+                <section className="space-y-3">
+                    <SectionLabel title="Events" count={results.activities.length} />
+                    <Collection view={view} label="Events">
+                        {results.activities.map((a, i) => (
+                            <CollectionItem key={a._id} index={i}><ActivityCard item={a} variant={view} /></CollectionItem>
                         ))}
-                    </div>
+                    </Collection>
                 </section>
             )}
-
-            {/* Products Section */}
-            {results.products.length > 0 && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Package className="h-5 w-5 text-primary" />
-                        <h2 className="text-lg font-bold">Products</h2>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        {results.products.map((product) => (
-                            <Link key={product._id} href="/app/shop">
-                                <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
-                                    <div className="h-32 bg-muted relative">
-                                        {product.imageUrl ? (
-                                            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground italic">
-                                                No image
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="p-3 space-y-1 flex-1 flex flex-col">
-                                        <h3 className="font-bold text-xs truncate">{product.name}</h3>
-                                        <p className="text-[10px] text-muted-foreground line-clamp-2 leading-tight flex-1">
-                                            {product.description}
-                                        </p>
-                                        <p className="text-sm font-bold text-primary pt-1">
-                                            Le {product.price.toFixed(2)}
-                                        </p>
-                                    </div>
-                                </Card>
-                            </Link>
+            {show("products") && results.products.length > 0 && (
+                <section className="space-y-3">
+                    <SectionLabel title="Products" count={results.products.length} />
+                    <Collection view={view} label="Products" gridClassName="grid-cols-2 lg:grid-cols-4">
+                        {results.products.map((p, i) => (
+                            <CollectionItem key={p._id} index={i}><ProductCard product={p} variant={view} /></CollectionItem>
                         ))}
-                    </div>
+                    </Collection>
                 </section>
             )}
         </div>
@@ -151,12 +139,7 @@ function SearchResults() {
 
 export default function SearchPage() {
     return (
-        <Suspense fallback={
-            <div className="flex flex-col items-center justify-center py-20">
-                <Search className="h-10 w-10 text-muted-foreground/20 mb-4 animate-pulse" />
-                <p className="text-muted-foreground text-sm">Loading...</p>
-            </div>
-        }>
+        <Suspense fallback={<PageSkeleton view="list" />}>
             <SearchResults />
         </Suspense>
     )

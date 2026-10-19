@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, ShoppingCart, ShoppingBag, Info, FileText, ChevronRight, Loader2, Home, ExternalLink, Trash2 } from "lucide-react"
+import { ArrowLeft, ShoppingCart, ShoppingBag, Info, FileText, ChevronRight, Loader2, ExternalLink, Trash2 } from "lucide-react"
+import { celebrate, EmptyArt, ServiceArt } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../../convex/_generated/api"
@@ -92,7 +93,7 @@ export default function RoomServicePage() {
       })
 
       setCart([])
-      alert("Order placed successfully!")
+      celebrate({ title: "Order placed!", message: "Your food is on the way.", kind: "room_service" })
     } catch (err) {
       console.error(err)
       alert("Failed to place order.")
@@ -154,7 +155,7 @@ export default function RoomServicePage() {
             </div>
           ) : activeMenus.length === 0 ? (
             <Card className="p-12 text-center border-dashed rounded-[3rem] bg-muted/10 border-2">
-              <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
+              <EmptyArt kind="room_service" size={88} className="mb-4" />
               <p className="text-xs font-medium text-muted-foreground">No digital menus available yet.</p>
             </Card>
           ) : (
@@ -427,8 +428,8 @@ export default function RoomServicePage() {
       {showRoomNumberModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <Card className="w-full max-w-sm rounded-[2.5rem] border-4 p-8 space-y-6 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="h-20 w-20 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary mx-auto">
-              <Home className="h-10 w-10" />
+            <div className="flex justify-center">
+              <ServiceArt kind="room" size={88} motion="always" />
             </div>
             <div className="text-center space-y-2">
               <h3 className="text-2xl font-black uppercase italic tracking-tighter">No room yet</h3>
@@ -487,7 +488,7 @@ export default function RoomServicePage() {
                     summary: requestNote?.trim() ? `${requestMenu.name} - ${requestNote.trim()}` : requestMenu.name,
                     total: 0,
                   })
-                  alert("Request submitted!")
+                  celebrate({ title: "Request sent!", message: "The kitchen has your order.", kind: "room_service" })
                   setRequestMenu(null)
                   setRequestNote("")
                 } catch (e) {

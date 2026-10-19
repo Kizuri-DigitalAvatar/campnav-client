@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Calendar as CalendarIcon, Clock, Users, Dumbbell, Target, Trophy } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useRouter } from "next/navigation"
 
@@ -47,7 +48,7 @@ export default function FacilityBookingPage() {
         userId: user._id,
       })
 
-      alert("Booking request submitted! We will confirm your slot shortly.")
+      celebrate({ title: "Booking sent!", message: "We will confirm your slot shortly.", kind: "facility" })
       router.push("/app/services")
     } catch (err) {
       console.error(err)

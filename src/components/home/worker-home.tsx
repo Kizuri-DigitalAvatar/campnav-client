@@ -4,7 +4,7 @@ import { useMutation } from "convex/react"
 import { useQuery } from "convex-helpers/react/cache"
 import { api } from "../../../convex/_generated/api"
 import {
-    CheckCircle, CheckCircle2, ClipboardCheck, ClipboardList, Clock, Inbox, MapPin, Megaphone, PlayCircle, Star, Target,
+    CheckCircle2, ClipboardCheck, ClipboardList, Inbox, MapPin, Star, Target,
 } from "lucide-react"
 import Link from "next/link"
 import { TaskCard } from "@/components/task-card"
@@ -15,6 +15,8 @@ import {
     DashboardHeader, EmptyState, ListRow, Panel, Pill, StatTile, StatusBadge, focusRing, timeAgo,
 } from "@/components/home/dashboard-ui"
 import { RowSkeleton } from "@/components/home/resident-home"
+import { ServiceArt, artForType } from "@/components/visuals"
+import { CampUpdates } from "@/components/home/camp-updates"
 
 const DAY = 24 * 60 * 60 * 1000
 const DONE = ["completed", "rated", "cancelled"]
@@ -23,7 +25,6 @@ export function WorkerHome({ user }: { user: any }) {
     const [selectedAssignmentId, setSelectedAssignmentId] = useState<Id<"tasks"> | null>(null)
 
     const assignments = useQuery(api.tasks.getWorkerAssignments, { workerId: user._id })
-    const announcements = useQuery(api.announcements.list, { priority: "all" })
     const preventive = useQuery(api.preventive.listForStaff, { staffId: user._id })
     const profile = useQuery(api.users.getProfile, { id: user._id })
 
@@ -68,7 +69,6 @@ export function WorkerHome({ user }: { user: any }) {
 
     const preventiveList = preventive ?? []
     const preventiveDue = preventiveList.filter((p: any) => p.nextDue - Date.now() <= DAY)
-    const latestNews = [...(announcements ?? [])].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 3)
 
     const handleAcknowledge = async (id: Id<"tasks">) => {
         await acknowledgeAssignment({ id, staffId: user._id })
@@ -114,6 +114,9 @@ export function WorkerHome({ user }: { user: any }) {
                 }
             />
 
+            {/* Announcements and events, seen first */}
+            <CampUpdates />
+
             {/* Key numbers */}
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 md:gap-4">
                 <StatTile
@@ -151,7 +154,7 @@ export function WorkerHome({ user }: { user: any }) {
                         ) : focusTask ? (
                             <TaskCard assignment={focusTask} {...cardHandlers} />
                         ) : (
-                            <EmptyState icon={CheckCircle} title="All caught up" hint="New tasks will appear here the moment they're assigned." />
+                            <EmptyState art="tasks" artTone="emerald" title="All caught up" hint="New tasks will appear here the moment they're assigned." />
                         )}
                     </Panel>
 
@@ -176,17 +179,15 @@ export function WorkerHome({ user }: { user: any }) {
                         {loading ? (
                             <RowSkeleton />
                         ) : recentTasks.length === 0 ? (
-                            <EmptyState icon={ClipboardList} title="No other assignments yet" />
+                            <EmptyState art="tasks" title="No other assignments yet" />
                         ) : (
                             <ul className="space-y-1">
                                 {recentTasks.map((task: any) => {
-                                    const done = task.status === "completed" || task.status === "rated"
-                                    const Icon = done ? CheckCircle : task.status === "in_progress" ? PlayCircle : Clock
                                     return (
                                         <ListRow
                                             key={task._id}
                                             href={`/app/assignments/${task._id}`}
-                                            icon={<Icon className={`h-4 w-4 ${done ? "text-emerald-600" : "text-primary"}`} aria-hidden />}
+                                            icon={<ServiceArt kind={artForType(task.serviceType)} size={40} motion={task.status === "in_progress" ? "always" : "none"} />}
                                             title={`${task.serviceType?.replace("_", " ") ?? "Task"}${task.roomNumber ? ` · Room ${task.roomNumber}` : ""}`}
                                             meta={<>{task.rating ? <span className="text-amber-600">{"★".repeat(task.rating)} · </span> : null}{task.description || timeAgo(task.assignedAt)}</>}
                                             status={task.status}
@@ -204,7 +205,7 @@ export function WorkerHome({ user }: { user: any }) {
                         {preventive === undefined ? (
                             <RowSkeleton rows={2} />
                         ) : preventiveList.length === 0 ? (
-                            <EmptyState icon={ClipboardCheck} title="Nothing scheduled for you" />
+                            <EmptyState art="calendar" title="Nothing scheduled for you" />
                         ) : (
                             <ul className="space-y-1">
                                 {preventiveList.slice(0, 4).map((p: any) => {
@@ -213,7 +214,7 @@ export function WorkerHome({ user }: { user: any }) {
                                     return (
                                         <li key={p._id}>
                                             <Link
-                                                href="/app/preventive"
+                                                href={`/app/preventive/${p._id}`}
                                                 className={`flex items-center gap-3 rounded-xl p-2 -mx-2 transition-colors hover:bg-muted/50 ${focusRing}`}
                                             >
                                                 <span className="min-w-0 flex-1">
@@ -244,28 +245,6 @@ export function WorkerHome({ user }: { user: any }) {
                             <p className="mt-1 text-xs text-muted-foreground">From {ratings.length} rated task{ratings.length === 1 ? "" : "s"}</p>
                         </Panel>
                     )}
-
-                    <Panel title="Updates" icon={Megaphone} action={{ label: "View all", href: "/app/updates" }}>
-                        {announcements === undefined ? (
-                            <RowSkeleton rows={2} />
-                        ) : latestNews.length === 0 ? (
-                            <EmptyState icon={Megaphone} title="No announcements" />
-                        ) : (
-                            <ul className="space-y-1">
-                                {latestNews.map((a: any) => (
-                                    <li key={a._id}>
-                                        <Link
-                                            href={`/app/updates/announcements/${a._id}`}
-                                            className={`block rounded-xl p-2 -mx-2 transition-colors hover:bg-muted/50 ${focusRing}`}
-                                        >
-                                            <span className="text-[11px] font-semibold text-muted-foreground">{a.priority} priority · {timeAgo(a.createdAt)}</span>
-                                            <span className="mt-0.5 block text-sm font-semibold leading-snug line-clamp-2">{a.title}</span>
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </Panel>
                 </div>
             </div>
 

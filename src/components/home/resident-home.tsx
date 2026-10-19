@@ -3,8 +3,7 @@
 import Link from "next/link"
 import { useQuery } from "convex-helpers/react/cache"
 import {
-  AlertTriangle, BedDouble, Brush, CalendarDays, ChefHat, ClipboardList, Clock, MapPin,
-  Megaphone, Shirt, ShoppingBag, UtensilsCrossed, Wrench,
+  AlertTriangle, BedDouble, CalendarDays, ClipboardList, Clock, MapPin, Megaphone, ShoppingBag,
 } from "lucide-react"
 
 import { api } from "../../../convex/_generated/api"
@@ -13,36 +12,26 @@ import { ReceptionContactCard } from "@/components/reception-contact"
 import {
   DashboardHeader, EmptyState, ListRow, Panel, Pill, StatTile, dayLabel, focusRing, timeAgo,
 } from "@/components/home/dashboard-ui"
+import { ServiceArt, artForType, useSpotlight, type ArtKind } from "@/components/visuals"
+import { CampUpdates } from "@/components/home/camp-updates"
 
-const QUICK_ACTIONS = [
-  { label: "Room Service", href: "/app/room-service", icon: UtensilsCrossed },
-  { label: "Housekeeping", href: "/app/house-keeping", icon: Brush },
-  { label: "Maintenance", href: "/app/maintenance/request", icon: Wrench },
-  { label: "Laundry", href: "/app/laundry", icon: Shirt },
-  { label: "Shop", href: "/app/shop", icon: ShoppingBag },
-  { label: "Meals", href: "/app/meals", icon: ChefHat },
+const QUICK_ACTIONS: { label: string; href: string; art: ArtKind }[] = [
+  { label: "Room Service", href: "/app/room-service", art: "room_service" },
+  { label: "Housekeeping", href: "/app/house-keeping", art: "housekeeping" },
+  { label: "Maintenance", href: "/app/maintenance/request", art: "maintenance" },
+  { label: "Laundry", href: "/app/laundry", art: "laundry" },
+  { label: "Shop", href: "/app/shop", art: "shop" },
+  { label: "Meals", href: "/app/meals", art: "meals" },
 ]
 
-const REQUEST_ICONS: Record<string, typeof Wrench> = {
-  maintenance: Wrench,
-  housekeeping: Brush,
-  laundry: Shirt,
-  room_service: UtensilsCrossed,
-}
-
 const ACTIVE = ["pending", "acknowledged", "in_progress"]
-const PRIORITY_DOT: Record<string, string> = {
-  high: "bg-rose-500",
-  medium: "bg-amber-500",
-  low: "bg-emerald-500",
-}
-
 export function ResidentHome({ user }: { user: any }) {
   const { roomNumber, loading: roomLoading } = useMyRoom()
   const requests = useQuery(api.requests.listForUser, { userId: user._id })
   const orders = useQuery(api.orders.listForUser, { userId: user._id })
   const announcements = useQuery(api.announcements.list, { priority: "all" })
   const activities = useQuery(api.activities.list)
+  const spotlight = useSpotlight(QUICK_ACTIONS.length)
 
   const activeRequests = (requests ?? []).filter((r: any) => ACTIVE.includes(r.status))
   const openOrders = (orders ?? []).filter((o: any) => ACTIVE.includes(o.status))
@@ -57,7 +46,6 @@ export function ResidentHome({ user }: { user: any }) {
     .filter((a: any) => a.date >= startOfToday)
     .sort((a: any, b: any) => a.date - b.date)
   const weekEvents = upcoming.filter((a: any) => a.date < startOfToday + 7 * 86400000)
-  const latestNews = [...(announcements ?? [])].sort((a: any, b: any) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 3)
   const newThisWeek = (announcements ?? []).filter((a: any) => (a.createdAt || 0) > Date.now() - 7 * 86400000).length
 
   return (
@@ -73,6 +61,9 @@ export function ResidentHome({ user }: { user: any }) {
           )
         }
       />
+
+      {/* Announcements and events, seen first */}
+      <CampUpdates />
 
       {/* Key numbers */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 md:gap-4">
@@ -101,15 +92,13 @@ export function ResidentHome({ user }: { user: any }) {
       {/* Quick actions */}
       <nav aria-label="Quick actions">
         <ul className="grid grid-cols-3 gap-3 sm:grid-cols-6 md:gap-4">
-          {QUICK_ACTIONS.map(({ label, href, icon: Icon }) => (
+          {QUICK_ACTIONS.map(({ label, href, art }, i) => (
             <li key={href}>
               <Link
                 href={href}
-                className={`glass-card card-lift flex h-full flex-col items-center gap-2 px-2 py-4 text-center ${focusRing}`}
+                className={`va-trigger glass-card card-lift flex h-full flex-col items-center gap-2 px-2 py-4 text-center ${spotlight === i ? "va-live" : ""} ${focusRing}`}
               >
-                <span className="tile-3d flex h-11 w-11 items-center justify-center rounded-2xl text-primary">
-                  <Icon className="h-5 w-5" aria-hidden />
-                </span>
+                <ServiceArt kind={art} size={52} />
                 <span className="text-xs font-semibold leading-tight">{label}</span>
               </Link>
             </li>
@@ -127,7 +116,7 @@ export function ResidentHome({ user }: { user: any }) {
               <RowSkeleton />
             ) : recentRequests.length === 0 ? (
               <EmptyState
-                icon={ClipboardList}
+                art="requests"
                 title="No requests yet"
                 hint="Need something fixed, cleaned or washed? We're on it."
                 action={{ label: "Make a request", href: "/app/services" }}
@@ -135,14 +124,13 @@ export function ResidentHome({ user }: { user: any }) {
             ) : (
               <ul className="space-y-1">
                 {recentRequests.map((r: any) => {
-                  const Icon = REQUEST_ICONS[r.type?.toLowerCase()] ?? ClipboardList
                   return (
                     <ListRow
                       key={r._id}
                       href={`/app/requests/${r._id}`}
                       icon={r.imageUrl
                         ? <img src={r.imageUrl} alt="" className="h-full w-full object-cover" />
-                        : <Icon className="h-4 w-4 text-primary" aria-hidden />}
+                        : <ServiceArt kind={artForType(r.type)} size={40} motion={r.status === "in_progress" ? "always" : "none"} />}
                       title={r.description}
                       meta={<><span className="capitalize">{r.type?.replace("_", " ")}</span> · {timeAgo(r.createdAt)}</>}
                       status={r.status}
@@ -158,7 +146,7 @@ export function ResidentHome({ user }: { user: any }) {
               <RowSkeleton />
             ) : recentOrders.length === 0 ? (
               <EmptyState
-                icon={ShoppingBag}
+                art="shop"
                 title="No orders yet"
                 hint="Order food, drinks and essentials to your room."
                 action={{ label: "Browse the shop", href: "/app/shop" }}
@@ -174,7 +162,7 @@ export function ResidentHome({ user }: { user: any }) {
                       href="/app/history"
                       icon={image
                         ? <img src={image} alt="" className="h-full w-full object-cover" />
-                        : <ShoppingBag className="h-4 w-4 text-primary" aria-hidden />}
+                        : <ServiceArt kind={o.source === "room_service" ? "room_service" : "shop"} size={40} motion="none" />}
                       title={names}
                       meta={<>{o.source === "room_service" ? "Room service" : "Shop"} · Le {o.total.toFixed(2)} · {timeAgo(o.createdAt)}</>}
                       status={o.status}
@@ -193,7 +181,7 @@ export function ResidentHome({ user }: { user: any }) {
             {activities === undefined ? (
               <RowSkeleton />
             ) : weekEvents.length === 0 ? (
-              <EmptyState icon={CalendarDays} title="Nothing scheduled" hint="Check back for camp events." />
+              <EmptyState art="calendar" title="Nothing scheduled" hint="Check back for camp events." />
             ) : (
               <ul className="space-y-2">
                 {weekEvents.slice(0, 4).map((e: any) => (
@@ -213,31 +201,6 @@ export function ResidentHome({ user }: { user: any }) {
                           {e.location && <span className="inline-flex items-center gap-1 truncate"><MapPin className="h-3 w-3" aria-hidden />{e.location}</span>}
                         </span>
                       </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Panel>
-
-          <Panel title="Announcements" icon={Megaphone} action={{ label: "View all", href: "/app/updates" }}>
-            {announcements === undefined ? (
-              <RowSkeleton />
-            ) : latestNews.length === 0 ? (
-              <EmptyState icon={Megaphone} title="No announcements" />
-            ) : (
-              <ul className="space-y-1">
-                {latestNews.map((a: any) => (
-                  <li key={a._id}>
-                    <Link
-                      href={`/app/updates/announcements/${a._id}`}
-                      className={`block rounded-xl p-2 -mx-2 transition-colors hover:bg-muted/50 ${focusRing}`}
-                    >
-                      <span className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
-                        <span className={`h-2 w-2 rounded-full ${PRIORITY_DOT[a.priority?.toLowerCase()] ?? "bg-muted-foreground"}`} aria-hidden />
-                        {a.priority} priority · {timeAgo(a.createdAt)}
-                      </span>
-                      <span className="mt-0.5 block text-sm font-semibold leading-snug line-clamp-2">{a.title}</span>
                     </Link>
                   </li>
                 ))}

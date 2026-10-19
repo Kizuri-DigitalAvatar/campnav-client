@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Truck } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useRouter } from "next/navigation"
 
@@ -34,7 +35,7 @@ export default function DeliveryPage() {
                 description: `Deliver: ${items.trim()}${from ? ` from ${from.trim()}` : ""}. Instructions: ${instructions}`,
                 priority: "important",
             })
-            alert("Delivery request submitted!")
+            celebrate({ title: "Request sent!", message: "Your delivery is being arranged.", kind: "delivery" })
             router.push("/app/requests")
         } catch (err) {
             console.error("Failed to submit delivery request:", err)

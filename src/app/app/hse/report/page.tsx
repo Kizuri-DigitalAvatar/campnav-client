@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Upload, X, ShieldAlert, AlertTriangle } from "lucide-react"
+import { celebrate } from "@/components/visuals"
 import { useMutation } from "convex/react"
 import { useRouter } from "next/navigation"
 
@@ -77,7 +78,7 @@ export default function HSEReportPage() {
         images: storageIds,
       })
 
-      alert("HSE Report submitted successfully!")
+      celebrate({ title: "Report sent", message: "Thank you for keeping the camp safe.", kind: "hse" })
       router.push("/app/services")
     } catch (err) {
       console.error(err)
